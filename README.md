@@ -24,6 +24,8 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 - **Live mini-map** with hazards, enemies, treasure, and route overlay
 - **Ship growth** — hull, boiler, turbine, and cannons visually scale as you upgrade
 - **Procedural audio** synthesized via Web Audio API (cannons, splashes, treasure chimes, boost, crane)
+- **Pause menu** (**ESC**) with Easy / Medium / Hard difficulty presets, Sound & SFX toggles, a Touch-controls toggle, and Save & Exit
+- **Touch controls** — an on-screen instrument joystick plus four action buttons (Attack, Jump, Boost, Upgrades) appear automatically on touch devices; hazards range from tiny rocks to huge islands
 - **Auto-save** to `localStorage` every 5 seconds (plus manual Reset)
 
 ---
@@ -49,28 +51,31 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 
 | Input | Action |
 |---|---|
-| **Mouse move** | Orbit camera / aim center reticle (pointer-lock or click-drag) |
+| **Mouse move** | Orbit camera / aim center reticle (pointer-lock or click-drag; the camera stays above the waterline) |
 | **Left Click** or **F** | Fire cannons |
 | **W / S** or **↑ / ↓** | Throttle forward / reverse |
 | **A / D** or **← / →** | Steer |
 | **SPACE** | Jump over obstacles / clear charted route |
 | **SHIFT** | Activate Propulsor Boost |
-| **E** | Drop salvage crane (when near a treasure beacon) |
+| **Right Click** or **E** | Drop salvage crane (when near a treasure beacon) |
 | **M** | Open / close full Sea Chart |
 | **Mouse Wheel** | Zoom camera in/out |
+| **ESC** | Pause / Resume (opens the settings & difficulty menu) |
 
 ---
 
 ## ⚓ Ship Upgrades
 
-Earn **XP** from sinking enemies, collecting XP orbs, and salvaging treasure. Spend it in the top-right panel. Every upgrade **doubles** its stat, and the ship model visibly grows.
+Earn **XP** from sinking enemies, collecting XP orbs, and salvaging treasure. Spend it in the top-right panel. Every upgrade adds **+1** to its stat, and the ship model visibly grows.
 
 | Upgrade | Base Stat | Cost (Lv 0) | Effect |
 |---|---|---|---|
-| 🛡️ **Boat Defense** | 50 HP | 40 XP | Doubles Max HP (50 → 100 → 200 → …) |
-| ⚙️ **Engine Speed** | 50 | 45 XP | Doubles top sailing speed |
-| 💣 **Cannon Attack** | 50 | 50 XP | Doubles attack damage |
-| 🚀 **Propulsor Boost** | 1.0 s | 50 XP | Doubles boost duration (1s → 2s → 4s → …) |
+| 🛡️ **Boat Defense** | 10 HP | 40 XP | +1 Max HP per level (10 → 11 → 12 → …) |
+| ⚙️ **Engine Speed** | 10 | 45 XP | +1 top sailing speed per level |
+| 💣 **Cannon Attack** | 10 | 50 XP | +1 attack damage per level |
+| 🚀 **Propulsor Boost** | 10 s | 50 XP | +1 s boost duration per level |
+
+Enemies are tuned to a similar scale: raiders are weak, while Krakens, Serpents and Titan Dreadnoughts are tough — and larger foes have more HP.
 
 Costs scale by `base × 2.1^tier`, so plan your spending.
 
@@ -107,8 +112,7 @@ Press **M** or click the map button to open the full **parchment Sea Chart**:
 - **Three.js r160** loaded via import map from unpkg CDN.
 - Shaders written as inline GLSL for the sky dome and ocean surface.
 - Game objects (projectiles, particles, wake rings, smoke puffs, flashes) use **object pooling** to avoid garbage collection hitches.
-- Includes a `selfTest()` routine that validates default stats, doubling math, cannon modes, and the aiming/camera pipeline — visible in the browser console on load.
-- A `window.game` object exposes `player`, `hazards`, `treasures`, `enemies`, and key functions for debugging in the console.
+- A `window.game` object exposes `player`, `hazards`, `treasures`, `enemies`, and key functions (`fireCannons`, `triggerSalvage`, `triggerBoost`, `buyUpgrade`, `setDifficulty`, `togglePause`, …) for debugging in the console.
 
 ---
 
