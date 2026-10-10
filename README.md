@@ -14,6 +14,7 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 
 - **Cel-shaded toon ocean** with animated Gerstner-style waves, foam, and stylized specular highlights
 - **Full day/night cycle** with orbiting sun & moon, stars, sunset tinting, and 1x / 4x / 16x timelapse speeds
+- **Sky easter egg** — aim the reticle at the sun and fire: it shatters into a storm of glowing shards and night falls. Shoot the moon instead and daylight breaks out. The broken body mends itself after a minute (or immediately when you shoot the other one)
 - **Dynamic weather ladder**: Calm Waters → Stormalong Fog → Squall & Rain → GREAT STORM → Frozen Polar Sea, with lightning flashes, wind drift, and rain
 - **Center-reticle aiming** — orbit the camera and fire cannons exactly where the crosshair points (third-person over-the-shoulder)
 - **Two cannon styles**: 💥 *Double Potence* (1 mega shell) or ⚡ *Double Balls* (2 twin shells, half damage each)

@@ -211,6 +211,11 @@
     box-shadow: 0 0 4px #ffaa22;
   }
   #cross.fire { border-color: var(--accent); transform: scale(1.25); box-shadow: 0 0 12px rgba(232,93,69,0.8); }
+  #cross.lock {
+    border-color: #ffd86b; transform: scale(1.14);
+    box-shadow: 0 0 16px rgba(255,205,80,0.95), inset 0 0 8px rgba(255,205,80,0.55);
+  }
+  #cross.lock #cross-dot { background: #fff0b8; box-shadow: 0 0 9px #ffd24a; }
 
   /* Hints and banners */
   #hint {
@@ -856,6 +861,142 @@ const moonHalo = new THREE.Mesh(
 moonGroup.add(moonHalo);
 scene.add(moonGroup);
 
+const SKY_BODIES = {
+  sun:  { group: sunGroup,  meshes: [sunMesh, coronaMesh], radius: 55, hit: 66, shard: 0xfff099 },
+  moon: { group: moonGroup, meshes: [moonMesh, moonHalo],  radius: 42, hit: 54, shard: 0xd9ecff },
+};
+const SKY_BREAK_TWEEN = 2.2;
+const SKY_BREAK_HOLD = 60;
+const CELESTIAL_SHOT_SPEED = 1050;
+const skyBreak = { body:null, phase:'idle', t:0, from:0, to:0, timer:0, pendingFlash:null };
+let aimCelestial = null;
+
+function setSkyBodyVisible(which, vis){
+  for (const m of SKY_BODIES[which].meshes) m.visible = vis;
+}
+
+function skyBanner(text){
+  const b = $('treasureBanner');
+  b.textContent = text;
+  b.style.opacity = '1';
+  clearTimeout(b._t);
+  b._t = setTimeout(() => { b.style.opacity = '0'; }, 2800);
+}
+
+const shards = [];
+const shardGeo = new THREE.IcosahedronGeometry(1, 0);
+
+function spawnShards(pos, count, hex){
+  for (let i = 0; i < count; i++){
+    let s = shards.find(x => !x.live);
+    if (!s){
+      const mesh = new THREE.Mesh(shardGeo, new THREE.MeshBasicMaterial({ color:hex, transparent:true, opacity:1 }));
+      scene.add(mesh);
+      s = { mesh, live:false, vel:new THREE.Vector3(), spin:new THREE.Vector3(), life:0, max:1 };
+      shards.push(s);
+    }
+    s.live = true;
+    s.life = s.max = 1.8 + Math.random() * 2.2;
+    s.mesh.visible = true;
+    s.mesh.material.color.setHex(hex);
+    s.mesh.material.opacity = 1;
+    s.mesh.position.copy(pos);
+    s.mesh.scale.setScalar(6 + Math.random() * 18);
+    s.mesh.rotation.set(Math.random()*6.28, Math.random()*6.28, Math.random()*6.28);
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(Math.random() * 2 - 1);
+    const sp = 60 + Math.random() * 170;
+    s.vel.set(Math.sin(ph)*Math.cos(th)*sp, Math.cos(ph)*sp*0.7, Math.sin(ph)*Math.sin(th)*sp);
+    s.spin.set((Math.random()-0.5)*3.4, (Math.random()-0.5)*3.4, (Math.random()-0.5)*3.4);
+  }
+}
+
+function updateShards(dt){
+  for (const s of shards){
+    if (!s.live) continue;
+    s.life -= dt;
+    if (s.life <= 0){ s.live = false; s.mesh.visible = false; continue; }
+    s.vel.y -= 55 * dt;
+    s.vel.multiplyScalar(1 - 0.5 * dt);
+    s.mesh.position.addScaledVector(s.vel, dt);
+    s.mesh.rotation.x += s.spin.x * dt;
+    s.mesh.rotation.y += s.spin.y * dt;
+    s.mesh.rotation.z += s.spin.z * dt;
+    s.mesh.material.opacity = Math.min(1, (s.life / s.max) * 1.8);
+  }
+}
+
+function resetSkyBreak(){
+  skyBreak.body = null; skyBreak.phase = 'idle'; skyBreak.timer = 0;
+  skyBreak.pendingFlash = null; skyBreak.t = 0;
+  aimCelestial = null;
+  setSkyBodyVisible('sun', true);
+  setSkyBodyVisible('moon', true);
+  for (const s of shards){ s.live = false; s.mesh.visible = false; }
+}
+
+function shatterSky(which){
+  if (skyBreak.body === which) return false;
+  const body = SKY_BODIES[which];
+  const other = which === 'sun' ? 'moon' : 'sun';
+  initAudio();
+  playSound('cannon');
+  playSound('hit');
+  explode(body.group.position.clone(), 7, body.shard);
+  spawnFlash(body.group.position.clone(), 48, body.shard);
+  spawnFlash(body.group.position.clone(), 30, 0xffffff);
+  spawnShards(body.group.position, which === 'sun' ? 34 : 26, body.shard);
+  shake = Math.min(shake + 26, 46);
+  setSkyBodyVisible(which, false);
+  setSkyBodyVisible(other, true);
+  skyBreak.body = which;
+  skyBreak.phase = 'tween';
+  skyBreak.t = 0;
+  skyBreak.from = celestial.hour;
+  skyBreak.to = which === 'sun' ? 21.5 : 12.0;
+  skyBreak.timer = SKY_BREAK_HOLD;
+  skyBanner(which === 'sun'
+    ? '🌞💥 THE SUN SHATTERS — NIGHT FALLS'
+    : '🌙💥 THE MOON SHATTERS — DAY BREAKS');
+  return true;
+}
+
+function reformSky(){
+  const which = skyBreak.body;
+  if (!which) return;
+  setSkyBodyVisible(which, true);
+  celestial.hour = which === 'sun' ? 6.3 : 19.3;
+  skyBreak.body = null;
+  skyBreak.phase = 'idle';
+  skyBreak.pendingFlash = which;
+  playSound('treasure');
+  skyBanner(which === 'sun' ? '🌞 THE SUN REFORMS ITSELF' : '🌙 THE MOON REFORMS ITSELF');
+}
+
+const CELESTIAL_CONE = 0.122;
+function rayCelestial(ray, cone = 0){
+  let best = null;
+  for (const which of ['sun','moon']){
+    const body = SKY_BODIES[which];
+    if (!body.meshes[0].visible) continue;
+    const toBody = body.group.position.clone().sub(ray.origin);
+    const t = toBody.dot(ray.direction);
+    if (t <= 0) continue;
+    const near = ray.origin.clone().addScaledVector(ray.direction, t);
+    const miss = near.distanceTo(body.group.position);
+    if (miss > body.hit && (cone <= 0 || miss > t * Math.tan(cone))) continue;
+    if (!best || t < best.t) best = { which, t, point: near };
+  }
+  return best;
+}
+
+function updateCelestialLock(){
+  const cross = $('cross');
+  if (gameOver || !player.alive){ cross.classList.remove('lock'); return; }
+  computeAimTarget();
+  cross.classList.toggle('lock', aimCelestial !== null);
+}
+
 const STAR_COUNT = 850;
 const starPos = new Float32Array(STAR_COUNT * 3);
 for (let i = 0; i < STAR_COUNT; i++){
@@ -986,6 +1127,20 @@ const PAL = {
 
 function updateDayNightAndWeather(dt){
   celestial.hour = (celestial.hour + dt * celestial.speed) % 24.0;
+  if (skyBreak.phase === 'tween'){
+    skyBreak.t = Math.min(1, skyBreak.t + dt / SKY_BREAK_TWEEN);
+    const k = skyBreak.t;
+    celestial.hour = skyBreak.from + (skyBreak.to - skyBreak.from) * (k * k * (3 - 2 * k));
+    if (k >= 1) skyBreak.phase = 'held';
+  } else if (skyBreak.phase === 'held'){
+    skyBreak.timer -= dt;
+    if (skyBreak.body === 'sun'){
+      if (celestial.hour >= 4.7 && celestial.hour < 21) celestial.hour = 4.7;
+    } else {
+      if (celestial.hour >= 14.9 || celestial.hour < 8) celestial.hour = 14.9;
+    }
+    if (skyBreak.timer <= 0) reformSky();
+  }
   const h = celestial.hour;
   const hInt = Math.floor(h);
   const mInt = Math.floor((h % 1) * 60);
@@ -1010,6 +1165,12 @@ function updateDayNightAndWeather(dt){
   coronaMesh.rotation.z += dt * 0.4;
   moonGroup.position.set(player.pos.x - sunX, -sunY, player.pos.z - sunZ);
   moonGroup.lookAt(player.pos.x, player.pos.y, player.pos.z);
+  if (skyBreak.pendingFlash){
+    const which = skyBreak.pendingFlash;
+    skyBreak.pendingFlash = null;
+    const body = SKY_BODIES[which];
+    spawnFlash(body.group.position.clone(), which === 'sun' ? 36 : 28, body.shard);
+  }
   starsMesh.position.set(player.pos.x, 0, player.pos.z);
   skyMesh.position.set(player.pos.x, 0, player.pos.z);
 
@@ -1858,11 +2019,27 @@ function spawnBall(pos, vel, team, dmg, r = 0.44, hex = 0x1f1f1f){
     balls.push(b);
   }
   b.live = true; b.team = team; b.dmg = dmg; b.life = 3.2;
+  b.celestial = null;
   b.mesh.scale.setScalar(r / 0.44);
   b.mesh.position.copy(pos);
   b.mesh.material.color.setHex(hex);
   b.mesh.visible = true;
   b.vel.copy(vel);
+  return b;
+}
+
+function straightVelocity(from, to){
+  const v = to.clone().sub(from);
+  const d = Math.max(v.length(), 0.001);
+  return v.multiplyScalar(CELESTIAL_SHOT_SPEED / d);
+}
+
+function armCelestialBall(b, which){
+  if (!b) return;
+  b.celestial = which;
+  b.life = 6;
+  b.mesh.scale.setScalar(5);
+  b.mesh.material.color.setHex(SKY_BODIES[which].shard);
 }
 
 const flashes = [];
@@ -2114,7 +2291,7 @@ function updateJoyKnob(clientX, clientY){
   const len = Math.hypot(dx, dy);
   if (len > max){ dx = dx / len * max; dy = dy / len * max; }
   knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-  mobileInput.steer = dx / max;
+  mobileInput.steer = -dx / max;
   mobileInput.throttle = -dy / max;
 }
 function resetJoyKnob(){
@@ -2387,6 +2564,7 @@ function resetGame(){
   player.boostActive = false; player.boostTimer = 0; player.boostCd = 0;
   chartedRoute = [];
   salvageState.active = false;
+  resetSkyBreak();
 
   for (const h of hazards) removeFromScene(h);
   for (const t of treasures) removeFromScene(t);
@@ -2439,6 +2617,7 @@ function computeAimTarget(){
   const ray = centerRaycaster.ray;
   let closestDist = Infinity;
   let hitPoint = null;
+  aimCelestial = null;
   for (const e of enemies){
     const center = e.ship.group.position.clone();
     const radius = enemyHitRadius(e);
@@ -2454,11 +2633,20 @@ function computeAimTarget(){
       }
     }
   }
-  if (hitPoint) return hitPoint;
   if (ray.direction.y < -0.002){
     const t = -ray.origin.y / ray.direction.y;
-    if (t > 0 && t < 1800) return ray.origin.clone().addScaledVector(ray.direction, t);
+    if (t > 0 && t < 1800 && t < closestDist){
+      closestDist = t;
+      hitPoint = ray.origin.clone().addScaledVector(ray.direction, t);
+    }
   }
+  const cel = rayCelestial(ray, CELESTIAL_CONE);
+  if (cel && cel.t < closestDist){
+    closestDist = cel.t;
+    hitPoint = cel.point;
+    aimCelestial = cel.which;
+  }
+  if (hitPoint) return hitPoint;
   return ray.origin.clone().addScaledVector(ray.direction, 500);
 }
 
@@ -2480,18 +2668,24 @@ function fireCannons(){
   const muzzleCenter = muzzleL.clone().lerp(muzzleR, 0.5);
 
   const isPotence = player.cannonStyle === 'potence';
+  const cel = aimCelestial;
+  const celPos = cel ? SKY_BODIES[cel].group.position : null;
   if (isPotence){
     playSound('cannon');
-    const v = ballisticVelocity(muzzleCenter, targetPoint);
-    spawnBall(muzzleCenter, v, false, player.attack, 0.72, 0x1a1a1a);
+    const v = cel ? straightVelocity(muzzleCenter, celPos) : ballisticVelocity(muzzleCenter, targetPoint);
+    const b = spawnBall(muzzleCenter, v, false, player.attack, 0.72, 0x1a1a1a);
+    if (cel) armCelestialBall(b, cel);
     spawnFlash(muzzleCenter.clone().add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(1.4)), 3.2, 0xffa042);
   } else {
     playSound('cannonVolley');
     const right = new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), new THREE.Vector3(0,1,0)).normalize();
     const targetL = targetPoint.clone().addScaledVector(right, -1.4);
     const targetR = targetPoint.clone().addScaledVector(right, 1.4);
-    spawnBall(muzzleL, ballisticVelocity(muzzleL, targetL), false, player.attack * 0.5, 0.44, 0x222222);
-    spawnBall(muzzleR, ballisticVelocity(muzzleR, targetR), false, player.attack * 0.5, 0.44, 0x222222);
+    const vL = cel ? straightVelocity(muzzleL, celPos) : ballisticVelocity(muzzleL, targetL);
+    const vR = cel ? straightVelocity(muzzleR, celPos) : ballisticVelocity(muzzleR, targetR);
+    const bL = spawnBall(muzzleL, vL, false, player.attack * 0.5, 0.44, 0x222222);
+    const bR = spawnBall(muzzleR, vR, false, player.attack * 0.5, 0.44, 0x222222);
+    if (cel){ armCelestialBall(bL, cel); armCelestialBall(bR, cel); }
     spawnFlash(muzzleL, 2.0, 0xffd27a);
     spawnFlash(muzzleR, 2.0, 0xffd27a);
   }
@@ -2715,7 +2909,7 @@ addEventListener('pointermove', e => {
     lastPointerX = e.clientX;
     lastPointerY = e.clientY;
     camYaw -= dx * 0.0040;
-    camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.0040, -0.28, 1.15);
+    camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.0040, -1.48, 1.15);
     player.heading = camYaw;
   }
 });
@@ -2997,6 +3191,7 @@ function update(dt){
   if (saveTimer > 5.0){ saveTimer = 0; saveGame(); }
 
   updateDayNightAndWeather(dt);
+  updateCelestialLock();
 
   if (player.boostActive){
     player.boostTimer -= dt;
@@ -3277,9 +3472,25 @@ function update(dt){
   for (const b of balls){
     if (!b.live) continue;
     b.life -= dt;
-    b.vel.y -= 9.0 * dt;
-    b.mesh.position.addScaledVector(b.vel, dt);
     const p = b.mesh.position;
+
+    if (b.celestial){
+      const body = SKY_BODIES[b.celestial];
+      const to = body.group.position.clone().sub(p);
+      const d = to.length();
+      if (d <= body.hit){
+        b.live = false; b.mesh.visible = false;
+        if (!shatterSky(b.celestial)) spawnFlash(p.clone(), 5, body.shard);
+        continue;
+      }
+      b.vel.copy(to.multiplyScalar(CELESTIAL_SHOT_SPEED / d));
+      p.addScaledVector(b.vel, dt);
+      if (b.life <= 0){ b.live = false; b.mesh.visible = false; }
+      continue;
+    }
+
+    b.vel.y -= 9.0 * dt;
+    p.addScaledVector(b.vel, dt);
     p.y = Math.max(p.y, seaHeight(p.x, p.z, time) + 0.2);
 
     if (b.life <= 0){ b.live = false; b.mesh.visible = false; continue; }
@@ -3347,6 +3558,8 @@ function update(dt){
     f.mesh.material.opacity = 1 - k;
     if (f.life <= 0){ f.live = false; f.mesh.visible = false; }
   }
+
+  updateShards(dt);
 
   for (let i = 0; i < PCOUNT; i++){
     const o = i*3;
