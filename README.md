@@ -13,19 +13,22 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 ## ✨ Features
 
 - **Cel-shaded toon ocean** with animated Gerstner-style waves, foam, and stylized specular highlights
-- **Full day/night cycle** with orbiting sun & moon, stars, sunset tinting, and 1x / 4x / 16x timelapse speeds
+- **Full day/night cycle** with orbiting sun & moon, stars, sunset tinting, and 1x / 4x / 16x timelapse speeds; the time badge tracks your **day count**
+- **🌕🩸 Moon Blood** — every 28th day the moon turns red as blood and *every* enemy on the sea turns hostile at once. Safe harbors offer no shelter — run.
 - **Sky easter egg** — aim the reticle at the sun and fire: it shatters into a storm of glowing shards and night falls. Shoot the moon instead and daylight breaks out. The broken body mends itself after a minute (or immediately when you shoot the other one)
 - **Dynamic weather ladder**: Calm Waters → Stormalong Fog → Squall & Rain → GREAT STORM → Frozen Polar Sea, with lightning flashes, wind drift, and rain
 - **Center-reticle aiming** — orbit the camera and fire cannons exactly where the crosshair points (third-person over-the-shoulder)
 - **Two cannon styles**: 💥 *Double Potence* (1 mega shell) or ⚡ *Double Balls* (2 twin shells, half damage each)
-- **7 enemy types** with floating health bars: Pirate Raider, Phantom Galleon, Phantom Sky Drake, Abyssal Gulper, Dread Kraken, Giant Sea Serpent, Titan Dreadnought
+- **7 enemy types** with floating health bars — now with fully redesigned, more realistic models: serpents with jaws & dorsal spines, an anglerfish with glowing lure and ragged teeth, and a kraken with sucker-studded arms. Pirate crews stand on the decks of the raiders, ghosts, and dreadnoughts; **phantom galleons sail ten times larger** than before. The sea also runs **three times as many enemy boats** as it used to.
+- **Randomized kill verbs** — enemies get `SUNK`, `YEETED`, `BANISHED`, `SENT TO DAVY JONES`, `REKT`, `UNSUBSCRIBED`, `COMPOSTED`, `TENDERIZED`, `GENTLY ESCORTED TO THE ABYSS`, or `CONVERTED TO CORAL` when they go down (with ⚔️MIGHTY / ⚡COLOSSAL tier tags), and they **taunt you** between cannonades.
 - **Environmental hazards**: rocks, lily-pad plants, icebergs & ice floes, tropical islands, and whirlpools (which drag you in and damage your hull)
-- **Deep-sea treasure beacons** — columns of light mark sunken chests; drop the salvage crane to haul up loot with random rarity tiers
+- **🛟 Safe Harbors** — glowing green sanctuary beacons. Anchor inside one (press **E**) to hold position against wind and current, and enemies refuse to engage you. Note: Moon Blood renders them useless.
+- **Deep-sea treasure beacons** — columns of light mark sunken chests; drop the salvage crane to haul up loot from randomized rarity tables rich in wet socks, haunted cutlery, and slightly dented crowns
 - **Sea Chart autopilot** — draw a route on the parchment map and the boat follows it
 - **Live mini-map** with hazards, enemies, treasure, and route overlay
 - **Ship growth** — hull, boiler, turbine, and cannons visually scale as you upgrade
 - **Procedural audio** synthesized via Web Audio API (cannons, splashes, treasure chimes, boost, crane)
-- **Pause menu** (**ESC**) with Easy / Medium / Hard difficulty presets, Sound & SFX toggles, a Touch-controls toggle, and Save & Exit
+- **Pause menu** (**ESC**) with Peaceful / Easy / Medium / Hard / Impossible difficulty presets, Sound & SFX toggles, a Touch-controls toggle, and Save & Exit
 - **Touch controls** — an on-screen instrument joystick plus four action buttons (Attack, Jump, Boost, Upgrades) appear automatically on touch devices; hazards range from tiny rocks to huge islands
 - **Auto-save** to `localStorage` every 5 seconds (plus manual Reset)
 
@@ -35,16 +38,17 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 
 | Icon | Meaning |
 |---|---|
-| ⛵ | Player Boat / Pirate Raider |
-| 💀 | Phantom Ship |
-| 🐉 | Leviathan |
-| 🐙 | Kraken |
-| 🐟 | Angler |
-| 🦅 | Flying Drake |
-| 🏴‍☠️ | Titan Dreadnought |
+| ⛵ | Player Boat / Disgruntled Pirate Raider |
+| 💀 | Phantom Galleon (Fully Refunded) |
+| 🐉 | Giant Sea Serpent (Emotional Support) |
+| 🐙 | Dread Kraken, Lord of Eight Regrets |
+| 🐟 | Abyssal Gulper (Very Hungry) |
+| 🦅 | Sky Drake With Something To Prove |
+| 🏴‍☠️ | Titan Dreadnought, Esq. |
 | 🌿 | Plants |
 | ❄️ | Ice |
 | 💎 | Deep Light (treasure) |
+| 🛟 | Safe Harbor (enemies won't strike you here) |
 
 ---
 
@@ -58,7 +62,7 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 | **A / D** or **← / →** | Steer |
 | **SPACE** | Jump over obstacles / clear charted route |
 | **SHIFT** | Activate Propulsor Boost |
-| **Right Click** or **E** | Drop salvage crane (when near a treasure beacon) |
+| **Right Click** or **E** | Drop salvage crane (near a treasure beacon) — or **anchor / weigh anchor** inside a Safe Harbor |
 | **M** | Open / close full Sea Chart |
 | **Mouse Wheel** | Zoom camera in/out |
 | **ESC** | Pause / Resume (opens the settings & difficulty menu) |
@@ -94,9 +98,10 @@ Press **M** or click the map button to open the full **parchment Sea Chart**:
 
 ## 🌦️ World Systems
 
-- **Time** advances continuously; watch the badge in the top-left to see the current hour and phase (Dawn / Daylight / Dusk / Night).
-- **Weather** cycles on its own timer, or you can force progression by watching the banner. Great Storms summon lightning and heavy seas; the Frozen Polar Sea spawns ice hazards.
-- **Wind** drifts clouds and pushes your boat, growing stronger in storms.
+- **Time** advances continuously; the badge in the top-left shows the hour, phase (Dawn / Daylight / Dusk / Night), and the current **Day**. Every 28th day the **Moon Blood** rises: the moon bleeds red and every ship on the sea turns hostile at once.
+- **Weather** cycles on its own timer, or you can force progression by watching the banner. The skies now have a personality: *Suspiciously Calm Waters*, *Fog You Can Taste*, *Squall & Rain & Mild Regret*, *THE GREAT STORM (Please Stop)*, and *Frozen Polar Sea (Bring a Coat)*. Great Storms summon lightning and heavy seas; the Frozen Polar Sea spawns ice hazards.
+- **Wind** drifts clouds and pushes your boat, growing stronger in storms — unless you've dropped anchor in a Safe Harbor, which holds you dead still.
+- **Safe Harbors** bounce around the map as green beacons; inside one, enemies keep their distance and incoming enemy shot harmlessly ricochets away. Press **E** to anchor and stay exactly put — a safe place is only safe on ordinary nights, so don't trust it when the moon turns red.
 
 ---
 
@@ -113,7 +118,7 @@ Press **M** or click the map button to open the full **parchment Sea Chart**:
 - **Three.js r160** loaded via import map from unpkg CDN.
 - Shaders written as inline GLSL for the sky dome and ocean surface.
 - Game objects (projectiles, particles, wake rings, smoke puffs, flashes) use **object pooling** to avoid garbage collection hitches.
-- A `window.game` object exposes `player`, `hazards`, `treasures`, `enemies`, and key functions (`fireCannons`, `triggerSalvage`, `triggerBoost`, `buyUpgrade`, `setDifficulty`, `togglePause`, …) for debugging in the console.
+- A `window.game` object exposes `player`, `hazards`, `treasures`, `enemies`, `havens`, `celestial`, `bloodMoon`, and key functions (`fireCannons`, `triggerSalvage`, `triggerBoost`, `buyUpgrade`, `setDifficulty`, `togglePause`, …) for debugging in the console.
 
 ---
 

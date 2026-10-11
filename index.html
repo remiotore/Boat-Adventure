@@ -68,6 +68,14 @@
   }
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
 
+  #safeBadge {
+    display: none; align-items: center; gap: 6px;
+    background: rgba(40,150,70,0.4); border: 1px solid #5dff8a;
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #d6ffe2;
+    margin-top: 6px; font-weight: bold; text-shadow: 0 0 8px #2fae5a;
+    animation: pulse 1.8s infinite;
+  }
+
   /* Top Right: Upgrades */
   #upg {
     position: absolute; right: 16px; top: 16px; width: 208px;
@@ -333,7 +341,7 @@
   }
 
   /* ================= MOBILE TOUCH CONTROLS ================= */
-  #mobileControls { display: none; }
+  #mobileControls { display: none; touch-action: none; }
   body.mobile #mobileControls { display: block; }
   body.paused #mobileControls { display: none; }
 
@@ -385,12 +393,44 @@
   body.mobile #soundBtn { display: none; }
   body.mobile #boostHudBtn { display: none; }
   body.mobile #stats { transform: scale(0.82); transform-origin: top left; }
-  body.mobile #upg { display: none; transform: scale(0.8); transform-origin: top right; }
-  body.mobile.upg-open #upg { display: flex; }
   body.mobile #salvagePrompt { bottom: 108px; font-size: 12px; padding: 8px 16px; }
   body.mobile #cross { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
   body.mobile #pauseFrame { padding: 14px; }
   body.mobile .pause-cols { grid-template-columns: 1fr; }
+
+  /* ================= MOBILE PAUSE BUTTON ================= */
+  #pauseBtn {
+    display: none;
+    position: fixed; right: 12px; top: 12px; z-index: 70;
+    pointer-events: auto; cursor: pointer; touch-action: none;
+    background: linear-gradient(180deg, #3d2c1a, #1f170f);
+    border: 2px solid var(--gold); color: var(--ui);
+    border-radius: 10px; padding: 7px 13px; font-size: 18px; line-height: 1;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  body.mobile #pauseBtn { display: block; }
+  body.mobile.paused #pauseBtn { display: none; }
+
+  /* ================= MOBILE UPGRADES MODAL ================= */
+  #upgBackdrop {
+    position: fixed; inset: 0; z-index: 190; display: none;
+    background: rgba(4,10,16,0.92); backdrop-filter: blur(6px);
+  }
+  body.mobile.upg-open #upgBackdrop { display: block; }
+  body.upg-open #hud > *:not(#upg) { display: none !important; }
+  #upgClose { display: none; }
+  body.mobile #upg { display: none; }
+  body.mobile.upg-open #upg {
+    display: flex; position: fixed; left: 50%; top: 50%;
+    right: auto; transform: translate(-50%, -50%);
+    width: min(92vw, 400px); max-height: 88vh; overflow-y: auto;
+    z-index: 200; gap: 8px; padding: 14px;
+    background: linear-gradient(180deg, rgba(32,25,17,0.98), rgba(13,10,7,0.99));
+    border: 3px solid rgba(232,180,90,0.65); border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+  }
+  body.mobile.upg-open #upg .up-card { padding: 8px 10px; }
+  body.mobile.upg-open #upgClose { display: block; }
 
   /* ================= LANDSCAPE-ONLY ORIENTATION OVERLAY ================= */
   #rotateOverlay {
@@ -476,9 +516,14 @@
     <div id="autopilotBadge">
       🧭 CHARTED ROUTE ENGAGED (SPACE to Clear)
     </div>
+
+    <div id="safeBadge">
+      🟢 SAFE HARBOR — NO ENEMY WILL STRIKE YOU HERE
+    </div>
   </div>
 
   <button id="soundBtn" title="Toggle Sound">🔊 Audio</button>
+  <button id="pauseBtn" title="Pause">⏸</button>
 
   <!-- Upgrades Panel -->
   <div id="upg">
@@ -522,6 +567,8 @@
       </div>
       <button class="up-btn" id="btnUpgPropulsor">Upgrade Propulsor (50 XP)</button>
     </div>
+
+    <button class="up-btn" id="upgClose">✔ Done — Resume Voyage</button>
   </div>
 
   <div id="saveToast">💾 Progress Saved</div>
@@ -554,6 +601,9 @@
   </div>
 </div>
 
+<!-- Mobile upgrades backdrop -->
+<div id="upgBackdrop"></div>
+
 <!-- Full Sea Chart Modal Overlay -->
 <div id="chartOverlay">
   <div id="chartFrame">
@@ -565,7 +615,7 @@
     <canvas id="chartCanvas" width="860" height="490"></canvas>
     <div id="chartFooter">
       <div>
-        <span><b>Legend:</b> ⛵ Boat &nbsp; 💀 Phantom Ship &nbsp; 🐉 Leviathan &nbsp; 🐙 Kraken &nbsp; 🐟 Angler &nbsp; 🦅 Flying Drake &nbsp; 🏴‍☠️ Titan Dreadnought &nbsp; 🌿 Plants &nbsp; ❄️ Ice &nbsp; 💎 Deep Light</span>
+        <span><b>Legend:</b> ⛵ Boat &nbsp; 💀 Phantom Ship &nbsp; 🐉 Leviathan &nbsp; 🐙 Kraken &nbsp; 🐟 Angler &nbsp; 🦅 Flying Drake &nbsp; 🏴‍☠️ Titan Dreadnought &nbsp; 🌿 Plants &nbsp; ❄️ Ice &nbsp; 💎 Deep Light &nbsp; 🛟 Safe Harbor</span>
       </div>
       <div>
         <button class="chart-btn danger" id="clearRouteBtn">Clear Route (SPACE)</button>
@@ -603,6 +653,7 @@
         <div class="cfg-group">
           <div class="cfg-label">Difficulty</div>
           <div class="cfg-opts" id="diffOpts">
+            <button class="cfg-btn" data-diff="peaceful">🕊️ Peaceful</button>
             <button class="cfg-btn" data-diff="easy">🌴 Easy</button>
             <button class="cfg-btn" data-diff="medium">⚓ Medium</button>
             <button class="cfg-btn" data-diff="hard">🌊 Hard</button>
@@ -761,11 +812,11 @@ const placeAround = (entry, minR, span) => {
 };
 
 const STORMS = [
-  { name:'Calm Waters',     icon:'☀️', dur: 50, level: 0.00, fogDensity: 0.0005, fog: new THREE.Color(0x8ec3d8) },
-  { name:'Stormalong Fog',  icon:'🌫️', dur: 45, level: 0.45, fogDensity: 0.0035, fog: new THREE.Color(0x5a7876) },
-  { name:'Squall & Rain',   icon:'🌧️', dur: 45, level: 0.70, fogDensity: 0.0018, fog: new THREE.Color(0x486478) },
-  { name:'GREAT STORM',     icon:'⚡', dur: 40, level: 1.00, fogDensity: 0.0026, fog: new THREE.Color(0x273344) },
-  { name:'Frozen Polar Sea',icon:'❄️', dur: 45, level: 0.30, fogDensity: 0.0012, fog: new THREE.Color(0xa8d9e6) },
+  { name:'Suspiciously Calm Waters',    icon:'☀️', dur: 50, level: 0.00, fogDensity: 0.0005, fog: new THREE.Color(0x8ec3d8) },
+  { name:'Fog You Can Taste',           icon:'🌫️', dur: 45, level: 0.45, fogDensity: 0.0035, fog: new THREE.Color(0x5a7876) },
+  { name:'Squall & Rain & Mild Regret', icon:'🌧️', dur: 45, level: 0.70, fogDensity: 0.0018, fog: new THREE.Color(0x486478) },
+  { name:'THE GREAT STORM (Please Stop)',icon:'⚡', dur: 40, level: 1.00, fogDensity: 0.0026, fog: new THREE.Color(0x273344) },
+  { name:'Frozen Polar Sea (Bring a Coat)',icon:'❄️', dur: 45, level: 0.30, fogDensity: 0.0012, fog: new THREE.Color(0xa8d9e6) },
 ];
 
 const WAVES = [
@@ -833,7 +884,9 @@ const skyMat = new THREE.ShaderMaterial({
 const skyMesh = new THREE.Mesh(skyGeo, skyMat);
 scene.add(skyMesh);
 
-const celestial = { hour: 12.0, speed: 0.12, speeds: [0.12, 0.48, 1.92], speedIdx: 0 };
+const celestial = { hour: 12.0, speed: 0.12, speeds: [0.12, 0.48, 1.92], speedIdx: 0, day: 1 };
+const MOON_BLOOD_INTERVAL = 28;
+const bloodMoon = { active: false };
 $('timelapseBtn').onclick = () => {
   celestial.speedIdx = (celestial.speedIdx + 1) % celestial.speeds.length;
   celestial.speed = celestial.speeds[celestial.speedIdx];
@@ -926,10 +979,41 @@ function updateShards(dt){
   }
 }
 
+/* ------------------------------------------------ MOON BLOOD */
+function restoreMoonColors(){
+  moonMesh.material.color.setHex(0xe0ecf8);
+  moonHalo.material.color.setHex(0x90c4f8);
+  moonHalo.material.opacity = 0.35;
+}
+function beginBloodMoon(){
+  if (bloodMoon.active) return;
+  bloodMoon.active = true;
+  player.anchored = false;
+  setSkyBodyVisible('moon', true);
+  moonMesh.material.color.setHex(0xff2222);
+  moonHalo.material.color.setHex(0x8a0000);
+  moonHalo.material.opacity = 0.65;
+  skyBanner('🌕🩸 MOON BLOOD RISES — EVERY SOUL TURNS HOSTILE');
+  playSound('cannon');
+  spawnFlash(moonGroup.position.clone(), 40, 0xff2222);
+}
+function endBloodMoon(){
+  if (!bloodMoon.active) return;
+  bloodMoon.active = false;
+  restoreMoonColors();
+  skyBanner('🌙 The moon remembers itself. The sea exhales.');
+}
+function onNewDay(){
+  if (celestial.day % MOON_BLOOD_INTERVAL === 0) beginBloodMoon();
+  else if (bloodMoon.active) endBloodMoon();
+}
+
 function resetSkyBreak(){
   skyBreak.body = null; skyBreak.phase = 'idle'; skyBreak.timer = 0;
   skyBreak.pendingFlash = null; skyBreak.t = 0;
   aimCelestial = null;
+  bloodMoon.active = false;
+  restoreMoonColors();
   setSkyBodyVisible('sun', true);
   setSkyBodyVisible('moon', true);
   for (const s of shards){ s.live = false; s.mesh.visible = false; }
@@ -1125,8 +1209,19 @@ const PAL = {
   cloudNight: new THREE.Color(0x84a9c9),    cloudStorm: new THREE.Color(0x40454a),
 };
 
+/* Night is when the sun is below the horizon (matches the phase labels above). */
+function isNight(){
+  const h = celestial.hour;
+  return h < 5.0 || h >= 19.5;
+}
+
 function updateDayNightAndWeather(dt){
+  const prevHour = celestial.hour;
   celestial.hour = (celestial.hour + dt * celestial.speed) % 24.0;
+  if (celestial.hour < prevHour){
+    celestial.day++;
+    onNewDay();
+  }
   if (skyBreak.phase === 'tween'){
     skyBreak.t = Math.min(1, skyBreak.t + dt / SKY_BREAK_TWEEN);
     const k = skyBreak.t;
@@ -1153,7 +1248,7 @@ function updateDayNightAndWeather(dt){
   else { phaseIcon = '🌙'; phaseName = 'Night / Stars'; }
   
   $('timeIcon').textContent = phaseIcon;
-  $('timeName').textContent = `${timeStr} ${phaseName}`;
+  $('timeName').textContent = `${timeStr} ${phaseName} · Day ${celestial.day}${bloodMoon.active ? ' 🩸' : ''}`;
 
   const sunAngle = ((h - 6.0) / 24.0) * Math.PI * 2;
   const orbitR = 1200;
@@ -1516,11 +1611,35 @@ function createEnemyLifeBar(width = 4.2, height = 0.48){
   return { barGroup, fill, width, mats:[bgMat, rimMat, fillMat] };
 }
 
+/* ------------------------------------------------------- CREW FIGURES */
+function makePirateCrew(mats){
+  const g = new THREE.Group();
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.72, 8), mats.body);
+  torso.position.y = 0.36; g.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mats.skin);
+  head.position.y = 0.88; g.add(head);
+  if (mats.hat){
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.33, 0.07, 8), mats.hat);
+    brim.position.y = 1.06; g.add(brim);
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.27, 0.34, 6), mats.hat);
+    crown.position.y = 1.22; g.add(crown);
+  }
+  return { group:g, mats:[mats.body, mats.skin].concat(mats.hat ? [mats.hat] : []) };
+}
+function addCrew(g, mats, x, y, z, scale = 1){
+  const c = makePirateCrew(mats);
+  c.group.position.set(x, y, z);
+  if (scale !== 1) c.group.scale.setScalar(scale);
+  g.add(c.group);
+  return c;
+}
+
 /* ------------------------------------------------------- ENEMY ROSTER */
 function makeGhostShip(){
   const g = new THREE.Group();
   const ghostMat = new THREE.MeshLambertMaterial({ color: 0x48f5a6, transparent:true, opacity:0.75, emissive:0x1b5c3b });
   const tatteredSailMat = new THREE.MeshLambertMaterial({ color: 0x6af6b8, transparent:true, opacity:0.65, side:THREE.DoubleSide });
+  const ghostSkinMat = new THREE.MeshLambertMaterial({ color: 0x9bffd4, transparent:true, opacity:0.7 });
   g.add(new THREE.Mesh(HULL_GEO, ghostMat));
   const deck = new THREE.Mesh(DECK_GEO, ghostMat); deck.position.y = 0.8; g.add(deck);
   const mast = new THREE.Mesh(MAST_GEO, ghostMat); mast.position.y = 3.2; g.add(mast);
@@ -1528,128 +1647,257 @@ function makeGhostShip(){
   for (const s of [-1, 1]){
     const c = new THREE.Mesh(CANNON_BARREL_GEO, ghostMat); c.position.set(s*1.55, 1.15, 0.4); g.add(c);
   }
+  addCrew(g, { body: ghostMat, skin: ghostSkinMat, hat: null }, -0.85, 0.95, -1.0);
+  addCrew(g, { body: ghostMat, skin: ghostSkinMat, hat: null },  0.85, 0.95, -1.0);
+  addCrew(g, { body: ghostMat, skin: ghostSkinMat, hat: null },  0.0,  0.95,  1.4);
+
   const lb = createEnemyLifeBar(4.6, 0.55); lb.barGroup.position.set(0, 6.5, 0); g.add(lb.barGroup);
-  return { group:g, lb, mats:[ghostMat, tatteredSailMat, ...lb.mats], flash:0, kind:'ghost', hitRadius:5.2 };
+  return { group:g, lb, mats:[ghostMat, tatteredSailMat, ghostSkinMat, ...lb.mats], flash:0, kind:'ghost', hitRadius:5.2 };
 }
 
 function makeLeviathan(){
   const g = new THREE.Group();
-  const skinMat = new THREE.MeshLambertMaterial({ color: 0x1d7c74, emissive: 0x09332f });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0x1f6a62, emissive: 0x0a2f2b });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: 0xb8dfd2 });
   const crestMat = new THREE.MeshLambertMaterial({ color: 0x4ee3b6 });
+  const hornMat  = new THREE.MeshLambertMaterial({ color: 0xe8dcc0 });
+  const toothMat = new THREE.MeshLambertMaterial({ color: 0xfff6e6 });
   const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xffe642 });
 
-  const head = new THREE.Mesh(new THREE.ConeGeometry(1.6, 4.2, 6), skinMat);
-  head.rotation.x = Math.PI/2; head.position.z = 4.2; g.add(head);
-  for (const s of [-1, 1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), eyeMat);
-    eye.position.set(s*1.1, 0.7, 4.4); g.add(eye);
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 2.0, 4), crestMat);
-    horn.rotation.x = -0.5; horn.rotation.z = s * 0.4;
-    horn.position.set(s*0.9, 1.4, 3.2); g.add(horn);
+  // --- Head with jaws, teeth and horns (faces +Z ---
+  const head = new THREE.Mesh(new THREE.ConeGeometry(1.5, 4.5, 8), skinMat);
+  head.rotation.x = Math.PI/2; head.position.z = 5.0; g.add(head);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 2.0), skinMat);
+  snout.position.set(0, 0.25, 6.2); g.add(snout);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.55, 2.2), skinMat);
+  jaw.position.set(0, -0.95, 6.0); jaw.rotation.x = 0.18; g.add(jaw);
+  for (let i = -2; i <= 2; i++){
+    const u = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5), toothMat);
+    u.position.set(i*0.34, -0.32, 7.0); u.rotation.x = 0.65; g.add(u);
+    const l = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.85, 5), toothMat);
+    l.position.set(i*0.3, -1.35, 6.9); l.rotation.x = 2.5; g.add(l);
   }
+  for (const s of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), eyeMat);
+    eye.position.set(s*1.05, 0.75, 4.7); g.add(eye);
+    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.18, 0.7), crestMat);
+    brow.position.set(s*1.05, 1.15, 4.7); brow.rotation.z = s * -0.25; g.add(brow);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.9, 6), hornMat);
+    horn.rotation.x = -0.55; horn.rotation.z = s * 0.45;
+    horn.position.set(s*0.75, 1.7, 3.2); g.add(horn);
+  }
+  const headBelly = new THREE.Mesh(new THREE.SphereGeometry(1.15, 10, 6), bellyMat);
+  headBelly.scale.set(1.2, 0.55, 1.7); headBelly.position.set(0, -0.75, 5.1); g.add(headBelly);
 
+  // --- Tapering body: belly plates + dorsal spines ---
   const segments = [];
-  for (let i = 0; i < 7; i++){
-    const seg = new THREE.Mesh(new THREE.SphereGeometry(1.4 - i*0.14, 10, 8), skinMat);
-    seg.position.z = 2.4 - i * 1.8;
-    const crest = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 4), crestMat);
-    crest.position.y = 1.2 - i*0.1; seg.add(crest);
-    g.add(seg);
+  const N = 9;
+  for (let i = 0; i < N; i++){
+    const r = 1.5 - i * 0.13;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), skinMat);
+    seg.position.z = 2.6 - i * 1.9; g.add(seg);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r * 0.9, 10, 5), bellyMat);
+    b.scale.set(1.05, 0.5, 1); b.position.y = -r * 0.55; seg.add(b);
+    const spine = new THREE.Mesh(new THREE.ConeGeometry(0.3 - i*0.02, 1.05 - i*0.06, 4), crestMat);
+    spine.position.y = r * 0.95; seg.add(spine);
     segments.push(seg);
   }
-  const lb = createEnemyLifeBar(5.4, 0.6); lb.barGroup.position.set(0, 4.5, 1.5); g.add(lb.barGroup);
+  // Forked tail fin behind the last segment
+  const tailZ = 2.6 - (N - 1) * 1.9;
+  for (const s of [-1, 1]){
+    const lobe = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.6, 6), crestMat);
+    lobe.rotation.x = Math.PI/2; lobe.rotation.z = s * 0.55;
+    lobe.position.set(s*0.9, 0.1, tailZ - 1.6); g.add(lobe);
+  }
+  const lb = createEnemyLifeBar(6.0, 0.65); lb.barGroup.position.set(0, 4.8, 1.5); g.add(lb.barGroup);
 
-  return { group:g, segments, lb, mats:[skinMat, crestMat, eyeMat, ...lb.mats], flash:0, kind:'leviathan', hitRadius:6.2 };
+  return { group:g, segments, lb, mats:[skinMat, bellyMat, crestMat, hornMat, toothMat, eyeMat, ...lb.mats], flash:0, kind:'leviathan', hitRadius:6.2 };
 }
 
 function makeAngler(){
   const g = new THREE.Group();
-  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x5a3e35 });
-  const toothMat = new THREE.MeshLambertMaterial({ color: 0xfffae6 });
-  const lureMat  = new THREE.MeshBasicMaterial({ color: 0xffea38 });
-  const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x53352f });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: 0x96755f });
+  const finMat = new THREE.MeshLambertMaterial({ color: 0x3f2722 });
+  const toothMat = new THREE.MeshLambertMaterial({ color: 0xfff6e6 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffea38 });
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff9c0 });
+  const spotMat = new THREE.MeshBasicMaterial({ color: 0x9fe8ff });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
-  const body = new THREE.Mesh(new THREE.SphereGeometry(2.3, 12, 10), bodyMat);
-  body.scale.set(1.2, 1.1, 1.4); g.add(body);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(2.1, 14, 12), bodyMat);
+  body.scale.set(1.15, 1.0, 1.25); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(1.85, 12, 8), bellyMat);
+  belly.scale.set(1.12, 0.6, 1.2); belly.position.set(0, -1.0, 0.3); g.add(belly);
 
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.9, 2.2), bodyMat);
-  jaw.position.set(0, -0.9, 1.5); g.add(jaw);
-  for (let i = -2; i <= 2; i++){
-    const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.8, 4), toothMat);
-    tooth.position.set(i*0.45, -0.3, 2.4); g.add(tooth);
+  // Gaping jaws with long teeth
+  const upperJaw = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.85, 2.2), bodyMat);
+  upperJaw.position.set(0, 0.25, 2.1); g.add(upperJaw);
+  const lowerJaw = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 2.4), bodyMat);
+  lowerJaw.position.set(0, -1.15, 1.9); lowerJaw.rotation.x = 0.35; g.add(lowerJaw);
+  for (let i = -3; i <= 3; i++){
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 5), toothMat);
+    t.position.set(i*0.38, -0.3, 3.0); t.rotation.z = 0.35 * Math.sign(i || 1); g.add(t);
   }
-  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.65, 8, 8), eyeMat);
-  eyeL.position.set(-1.2, 1.2, 1.5); g.add(eyeL);
-  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), new THREE.MeshBasicMaterial({ color:0x000 }));
-  pupilL.position.set(-1.3, 1.2, 2.0); g.add(pupilL);
-  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.45, 8, 8), eyeMat);
-  eyeR.position.set(1.1, 0.9, 1.6); g.add(eyeR);
-  const pupilR = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), new THREE.MeshBasicMaterial({ color:0x000 }));
-  pupilR.position.set(1.2, 0.9, 2.0); g.add(pupilR);
+  for (let i = -3; i <= 3; i++){
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 5), toothMat);
+    t.position.set(i*0.36, -1.55, 2.9); t.rotation.x = 3.0; g.add(t);
+  }
+  // Asymmetric eyes, like a real anglerfish
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 8), eyeMat);
+  eyeL.position.set(-1.25, 1.05, 1.7); g.add(eyeL);
+  const pupL = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), pupilMat);
+  pupL.position.set(-1.38, 1.05, 2.25); g.add(pupL);
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), eyeMat);
+  eyeR.position.set(1.2, 0.85, 1.8); g.add(eyeR);
+  const pupR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), pupilMat);
+  pupR.position.set(1.3, 0.85, 2.2); g.add(pupR);
 
-  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 3.2, 5), bodyMat);
-  antenna.rotation.x = 1.1; antenna.position.set(0, 2.2, 2.0); g.add(antenna);
-  const lure = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8), lureMat);
-  lure.position.set(0, 3.3, 3.4); g.add(lure);
+  // Pectoral side fins
+  for (const s of [-1, 1]){
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.6, 6), finMat);
+    fin.rotation.x = 1.4; fin.rotation.z = s * -0.4;
+    fin.position.set(s*1.4, -0.7, 0.1); g.add(fin);
+  }
+  // Spiny dorsal ridge
+  for (let i = 0; i < 4; i++){
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.9, 4), finMat);
+    sp.position.set(0, 1.7, 0.2 - i*0.9); sp.rotation.x = 0.5; g.add(sp);
+  }
+  // Tail fin fan
+  for (let i = 0; i < 5; i++){
+    const ray = new THREE.Mesh(new THREE.ConeGeometry(0.1, 1.4, 5), finMat);
+    ray.rotation.z = (i - 2) * 0.5;
+    ray.position.set((i - 2) * 0.35, 0.1, -2.6); g.add(ray);
+  }
+  // Bioluminescent flank spots
+  for (let i = 0; i < 5; i++){
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.09 + Math.random()*0.05, 6, 6), spotMat);
+    s.position.set((Math.random()-0.5)*1.6, (Math.random()-0.5)*1.4, -0.6 - Math.random()*1.2);
+    g.add(s);
+  }
+  // Fishing rod + glowing lure
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.4, 5), bodyMat);
+  rod.rotation.x = 1.0; rod.position.set(0, 2.3, 2.2); g.add(rod);
+  const lure = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), glowMat);
+  lure.position.set(0, 3.4, 3.6); g.add(lure);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), coreMat);
+  core.position.set(0, 3.4, 3.6); g.add(core);
 
   const lb = createEnemyLifeBar(4.8, 0.55); lb.barGroup.position.set(0, 4.2, 0); g.add(lb.barGroup);
 
-  return { group:g, lure, lb, mats:[bodyMat, toothMat, lureMat, eyeMat, ...lb.mats], flash:0, kind:'angler', hitRadius:5.0 };
+  return { group:g, lure, lb, mats:[bodyMat, bellyMat, finMat, toothMat, glowMat, coreMat, spotMat, eyeMat, pupilMat, ...lb.mats], flash:0, kind:'angler', hitRadius:5.2 };
 }
 
 function makeKraken(){
   const g = new THREE.Group();
-  const skinMat = new THREE.MeshLambertMaterial({ color: 0x543663 });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0x51305d });
   const darkMat = new THREE.MeshLambertMaterial({ color: 0x2e1a38 });
+  const innerMat = new THREE.MeshLambertMaterial({ color: 0xbf8ed0 });
+  const suckMat = new THREE.MeshBasicMaterial({ color: 0xdcbfe8 });
   const eyeMat  = new THREE.MeshBasicMaterial({ color: 0xffad33 });
 
-  const mantle = new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 10), skinMat);
-  mantle.scale.set(1.3, 1.4, 2.1); g.add(mantle);
+  const mantle = new THREE.Mesh(new THREE.SphereGeometry(2.4, 14, 12), skinMat);
+  mantle.scale.set(1.2, 1.35, 1.8); mantle.position.y = 0.4; g.add(mantle);
   for (const s of [-1, 1]){
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), eyeMat);
-    e.position.set(s*1.2, 0.8, 2.2); g.add(e);
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.8, 6), darkMat);
+    fin.rotation.x = Math.PI/2; fin.rotation.z = s * 0.5;
+    fin.position.set(s * 1.5, 0.3, -1.7); g.add(fin);
   }
+  for (const s of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), eyeMat);
+    eye.position.set(s * 1.35, 1.0, 2.3); g.add(eye);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.12, 6, 14), darkMat);
+    ring.position.copy(eye.position); ring.rotation.y = s * 0.5; g.add(ring);
+  }
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.95, 6), innerMat);
+  beak.rotation.x = Math.PI/2; beak.position.set(0, 1.35, 3.2); g.add(beak);
+  const hood = new THREE.Mesh(new THREE.ConeGeometry(0.8, 0.5, 6), darkMat);
+  hood.rotation.x = Math.PI/2; hood.position.set(0, 1.75, 3.15); g.add(hood);
+
   const arms = [];
   for (let i = 0; i < 8; i++){
-    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.42, 5.8, 6), darkMat);
+    const l = 6.2 + (i % 4) * 0.5;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.48, l, 6), darkMat);
     const s = i % 2 ? 1 : -1;
-    arm.position.set(s*(1.4 + (i>>1)*0.9), -1.2, 1.2 - (i>>1)*1.6);
+    arm.position.set(s * (1.5 + (i>>1) * 1.0), -0.6, 1.1 - (i>>1) * 1.7);
     arm.rotation.x = 1.15; g.add(arm);
-    arms.push({ mesh:arm, phase:i*0.9, side:s });
+    for (let k = 0; k < 4; k++){
+      const sucker = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), suckMat);
+      sucker.position.set(0, -(0.9 + k * 0.9), 0.4);
+      arm.add(sucker);
+    }
+    arms.push({ mesh:arm, phase:i * 0.9, side:s });
   }
   const lb = createEnemyLifeBar(5.2, 0.6); lb.barGroup.position.set(0, 4.6, 0); g.add(lb.barGroup);
 
-  return { group:g, arms, lb, mats:[skinMat, darkMat, eyeMat, ...lb.mats], flash:0, kind:'kraken', hitRadius:5.8 };
+  return { group:g, arms, lb, mats:[skinMat, darkMat, innerMat, suckMat, eyeMat, ...lb.mats], flash:0, kind:'kraken', hitRadius:5.8 };
 }
 
 function makeFlyingDrake(){
   const g = new THREE.Group();
-  const scaleMat = new THREE.MeshLambertMaterial({ color: 0x2e4a62, emissive: 0x112333 });
+  const scaleMat = new THREE.MeshLambertMaterial({ color: 0x2e4a62, emissive: 0x0f1e2c });
   const wingMat  = new THREE.MeshLambertMaterial({ color: 0x3d7494, side: THREE.DoubleSide });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: 0x8fb6cc });
+  const hornMat  = new THREE.MeshLambertMaterial({ color: 0xd8a34a });
+  const darkMat  = new THREE.MeshLambertMaterial({ color: 0x20303f });
   const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xffdf40 });
 
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.9, 3.8, 6), scaleMat);
-  body.rotation.x = Math.PI/2; g.add(body);
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.8, 5), scaleMat);
-  head.rotation.x = -Math.PI/2; head.position.set(0, 0.2, 2.4); g.add(head);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.0, 12, 10), scaleMat);
+  body.scale.set(0.9, 0.85, 2.0); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.95, 10, 6), bellyMat);
+  belly.scale.set(0.7, 0.5, 1.8); belly.position.y = -0.6; g.add(belly);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.55, 1.4, 8), scaleMat);
+  neck.position.set(0, 0.5, 1.5); g.add(neck);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.6, 6), scaleMat);
+  head.rotation.x = -Math.PI/2; head.position.set(0, 0.85, 2.2); g.add(head);
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.32, 1.1, 6), scaleMat);
+  snout.rotation.x = -Math.PI/2; snout.position.set(0, 0.6, 3.0); g.add(snout);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.8), darkMat);
+  jaw.position.set(0, 0.4, 2.9); g.add(jaw);
   for (const s of [-1, 1]){
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 6, 6), eyeMat);
-    eye.position.set(s*0.48, 0.45, 2.6); g.add(eye);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), eyeMat);
+    eye.position.set(s * 0.45, 0.95, 2.45); g.add(eye);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.6, 5), hornMat);
+    horn.rotation.z = s * -0.5; horn.position.set(s * 0.3, 1.4, 2.0); g.add(horn);
   }
+  for (let i = 0; i < 5; i++){
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7 - i * 0.05, 4), hornMat);
+    sp.position.set(0, 0.85 + i * 0.05, 0.9 - i * 0.7);
+    sp.rotation.x = 0.4; g.add(sp);
+  }
+  for (let i = 0; i < 3; i++){
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.4 - i * 0.1, 1.4, 6), scaleMat);
+    tail.rotation.x = Math.PI/2; tail.position.set(0, 0.1, -2.3 - i * 0.9); g.add(tail);
+  }
+  const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 1.1), hornMat);
+  tailFin.position.set(0, 0.25, -4.9); g.add(tailFin);
 
   const wings = [];
   for (const s of [-1, 1]){
     const wingPivot = new THREE.Group();
-    wingPivot.position.set(s*0.6, 0.1, 0.2);
-    const wingMesh = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 2.4), wingMat);
-    wingMesh.position.set(s*1.8, 0, 0);
+    wingPivot.position.set(s * 0.55, 0.35, 0.1);
+    const wingMesh = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.12, 2.4), wingMat);
+    wingMesh.position.set(s * 2.1, 0, 0);
+    wingMesh.rotation.y = s * 0.18;
+    const talon = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.7, 5), darkMat);
+    talon.rotation.z = s * 1.2;
+    talon.position.set(s * 4.1, -0.25, 0.2); wingMesh.add(talon);
     wingPivot.add(wingMesh);
     g.add(wingPivot);
-    wings.push({ pivot:wingPivot, side:s });
+    wings.push({ pivot: wingPivot, side: s });
+  }
+  for (const s of [-1, 1]){
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 1.0, 6), darkMat);
+    leg.position.set(s * 0.5, -1.0, 0.1); g.add(leg);
+    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.4, 4), hornMat);
+    claw.position.set(s * 0.5, -1.6, 0.1); g.add(claw);
   }
   const lb = createEnemyLifeBar(4.4, 0.5); lb.barGroup.position.set(0, 2.2, 0); g.add(lb.barGroup);
 
-  return { group:g, wings, lb, mats:[scaleMat, wingMat, eyeMat, ...lb.mats], flash:0, kind:'flying', hitRadius:4.8 };
+  return { group:g, wings, lb, mats:[scaleMat, wingMat, bellyMat, hornMat, darkMat, eyeMat, ...lb.mats], flash:0, kind:'flying', hitRadius:4.8 };
 }
 
 function makeDreadnought(){
@@ -1658,6 +1906,8 @@ function makeDreadnought(){
   const goldTrim = new THREE.MeshLambertMaterial({ color: 0xb58c38 });
   const darkDeck = new THREE.MeshLambertMaterial({ color: 0x47382d });
   const blackSail= new THREE.MeshLambertMaterial({ color: 0x141414, side: THREE.DoubleSide });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xe8c39a });
+  const hatMat  = new THREE.MeshLambertMaterial({ color: 0x141414 });
 
   const hull = new THREE.Mesh(hullGeometry(12.5, 5.2, 3.8), armorMat);
   g.add(hull);
@@ -1678,9 +1928,14 @@ function makeDreadnought(){
       g.add(b);
     }
   }
+  const crewMats = { body: darkDeck, skin: skinMat, hat: hatMat };
+  addCrew(g, crewMats, 0, 1.9, 3.8, 1.15);
+  addCrew(g, crewMats, -1.7, 1.9, 0);
+  addCrew(g, crewMats, 1.7, 1.9, 0);
+  addCrew(g, crewMats, 0, 1.9, -3.6);
   const lb = createEnemyLifeBar(8.5, 0.85); lb.barGroup.position.set(0, 11.5, 0); g.add(lb.barGroup);
 
-  return { group:g, lb, mats:[armorMat, goldTrim, darkDeck, blackSail, ...lb.mats], flash:0, kind:'dreadnought', hitRadius:8.5 };
+  return { group:g, lb, mats:[armorMat, goldTrim, darkDeck, blackSail, skinMat, hatMat, ...lb.mats], flash:0, kind:'dreadnought', hitRadius:8.5 };
 }
 
 function makePirateShip(){
@@ -1688,6 +1943,8 @@ function makePirateShip(){
   const ironMat = new THREE.MeshLambertMaterial({ color: 0x423d38 });
   const redMat  = new THREE.MeshLambertMaterial({ color: 0xb53c2a });
   const sailMat = new THREE.MeshLambertMaterial({ color: 0x2b2929, side:THREE.DoubleSide });
+  const skinMat = new THREE.MeshLambertMaterial({ color: 0xe8c39a });
+  const hatMat  = new THREE.MeshLambertMaterial({ color: 0x171310 });
 
   g.add(new THREE.Mesh(HULL_GEO, ironMat));
   const deck = new THREE.Mesh(DECK_GEO, redMat); deck.position.y = 0.8; g.add(deck);
@@ -1696,9 +1953,14 @@ function makePirateShip(){
   for (const s of [-1, 1]){
     const c = new THREE.Mesh(CANNON_BARREL_GEO, ironMat); c.position.set(s*1.55, 1.15, 0.35); g.add(c);
   }
+  const crewMats = { body: redMat, skin: skinMat, hat: hatMat };
+  addCrew(g, crewMats, -0.85, 0.95, -1.0);
+  addCrew(g, crewMats,  0.85, 0.95, -1.0);
+  addCrew(g, crewMats,  0.0,  0.95,  1.5);
+
   const lb = createEnemyLifeBar(4.2, 0.5); lb.barGroup.position.set(0, 6.2, 0); g.add(lb.barGroup);
 
-  return { group:g, lb, mats:[ironMat, redMat, sailMat, ...lb.mats], flash:0, kind:'pirate', hitRadius:4.5 };
+  return { group:g, lb, mats:[ironMat, redMat, sailMat, skinMat, hatMat, ...lb.mats], flash:0, kind:'pirate', hitRadius:4.5 };
 }
 
 /* =========================================================
@@ -1711,13 +1973,13 @@ function makePirateShip(){
    Some of the biggest carry CLIMATIC auras (whirl / fog / storm).
    ========================================================= */
 const ENEMY_TYPES = [
-  { id:'pirate',    name:'Pirate Raider',       maker:makePirateShip,   hp:8,  speed:24, dmg:2, cd:1.8, scaleRange:[1,1],   xp:8,   icon:'⛵', isFly:false, aggressive:false, spawnWeight:32, climate:null },
-  { id:'ghost',     name:'Phantom Galleon',     maker:makeGhostShip,    hp:14, speed:20, dmg:3, cd:1.5, scaleRange:[1,5],   xp:16,  icon:'💀', isFly:false, aggressive:false, spawnWeight:22, climate:null },
-  { id:'flying',    name:'Phantom Sky Drake',   maker:makeFlyingDrake,  hp:10, speed:32, dmg:3, cd:1.6, scaleRange:[5,10],  xp:18,  icon:'🦅', isFly:true,  aggressive:false, spawnWeight:16, climate:null },
-  { id:'angler',    name:'Abyssal Gulper',      maker:makeAngler,       hp:16, speed:19, dmg:4, cd:2.0, scaleRange:[5,10],  xp:22,  icon:'🐟', isFly:false, aggressive:false, spawnWeight:14, climate:null },
-  { id:'kraken',    name:'Dread Kraken',        maker:makeKraken,       hp:22, speed:16, dmg:5, cd:1.5, scaleRange:[10,30], xp:40,  icon:'🐙', isFly:false, aggressive:true,  spawnWeight:9,  climate:'whirl' },
-  { id:'leviathan', name:'Giant Sea Serpent',   maker:makeLeviathan,    hp:26, speed:18, dmg:6, cd:1.3, scaleRange:[15,40], xp:70,  icon:'🐉', isFly:false, aggressive:true,  spawnWeight:5,  climate:'fog' },
-  { id:'titan',     name:'Titan Dreadnought',   maker:makeDreadnought,  hp:30, speed:15, dmg:8, cd:1.8, scaleRange:[20,50], xp:140, icon:'🏴‍☠️', isFly:false, aggressive:true,  spawnWeight:2,  climate:'storm' },
+  { id:'pirate',    name:'Disgruntled Pirate Raider',       maker:makePirateShip,   hp:8,  speed:24, dmg:2, cd:1.8, scaleRange:[1,1],   xp:8,   icon:'⛵', isFly:false, aggressive:false, spawnWeight:32, climate:null },
+  { id:'ghost',     name:'Phantom Galleon (Fully Refunded)', maker:makeGhostShip,    hp:14, speed:20, dmg:3, cd:1.5, scaleRange:[10,50], xp:16,  icon:'💀', isFly:false, aggressive:false, spawnWeight:22, climate:null },
+  { id:'flying',    name:'Sky Drake With Something To Prove',maker:makeFlyingDrake,  hp:10, speed:32, dmg:3, cd:1.6, scaleRange:[5,10],  xp:18,  icon:'🦅', isFly:true,  aggressive:false, spawnWeight:16, climate:null },
+  { id:'angler',    name:'Abyssal Gulper (Very Hungry)',      maker:makeAngler,       hp:16, speed:19, dmg:4, cd:2.0, scaleRange:[5,10],  xp:22,  icon:'🐟', isFly:false, aggressive:false, spawnWeight:14, climate:null },
+  { id:'kraken',    name:'Dread Kraken, Lord of Eight Regrets',maker:makeKraken,      hp:22, speed:16, dmg:5, cd:1.5, scaleRange:[10,30], xp:40,  icon:'🐙', isFly:false, aggressive:true,  spawnWeight:9,  climate:'whirl' },
+  { id:'leviathan', name:'Giant Sea Serpent (Emotional Support)',maker:makeLeviathan, hp:26, speed:18, dmg:6, cd:1.3, scaleRange:[15,40], xp:70,  icon:'🐉', isFly:false, aggressive:true,  spawnWeight:5,  climate:'fog' },
+  { id:'titan',     name:'Titan Dreadnought, Esq.',           maker:makeDreadnought,  hp:30, speed:15, dmg:8, cd:1.8, scaleRange:[20,50], xp:140, icon:'🏴‍☠️', isFly:false, aggressive:true,  spawnWeight:2,  climate:'storm' },
 ];
 
 const TOTAL_SPAWN_WEIGHT = ENEMY_TYPES.reduce((a,t) => a + t.spawnWeight, 0);
@@ -2006,6 +2268,46 @@ function spawnTreasureHazard(first){
   treasures.push(t);
 }
 
+/* ------------------------------------------------ SAFE HARBORS */
+function makeSafeHaven(){
+  const g = new THREE.Group();
+  const R = 32;
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0x5dff8a, transparent:true, opacity:0.18, side:THREE.DoubleSide, depthWrite:false });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(R*0.82, R, 140, 24, 1, true), beamMat);
+  beam.position.y = 55;
+  g.add(beam);
+
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x7dffa8, transparent:true, opacity:0.55, side:THREE.DoubleSide, depthWrite:false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(R-2.5, R, 44), ringMat);
+  ring.rotateX(-Math.PI/2); ring.position.y = 0.25;
+  g.add(ring);
+
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xd8ffe6, transparent:true, opacity:0.9 });
+  const core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 12, 10), coreMat);
+  core.position.y = 7;
+  g.add(core);
+
+  return { group:g, radius:R, beam, ring, core, mats:[beamMat, ringMat, coreMat], kind:'haven' };
+}
+
+const havens = [];
+let playerSafe = false;
+
+function spawnSafeHaven(first){
+  const h = makeSafeHaven();
+  h.pos = new THREE.Vector3();
+  placeAround(h, first ? 90 : 220, first ? 200 : 320);
+  scene.add(h.group);
+  havens.push(h);
+}
+
+function playerInSafeHaven(){
+  for (const h of havens){
+    if (Math.hypot(player.pos.x - h.pos.x, player.pos.z - h.pos.z) < h.radius) return true;
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------- PROJECTILES */
 const balls = [];
 const ballGeo = new THREE.SphereGeometry(0.44, 10, 8);
@@ -2135,6 +2437,7 @@ const player = {
   speed: 10, attack: 10,
   boostDuration: 10,
   boostActive: false, boostTimer: 0, boostCd: 0,
+  anchored: false,
 };
 
 let enemies = [], shake = 0, gameOver = false, time = 0, spawnTimer = 3, elapsed = 0;
@@ -2147,6 +2450,7 @@ let isPointerDragging = false;
 let isPointerLocked = false;
 let lastPointerX = 0, lastPointerY = 0;
 let pointerStartX = 0, pointerStartY = 0;
+let camPointerId = null;
 
 let chartedRoute = [];
 const salvageState = { active: false, targetTreasure: null, phase: 'idle', clawY: 0, timer: 0 };
@@ -2155,10 +2459,11 @@ const salvageState = { active: false, targetTreasure: null, phase: 'idle', clawY
    PAUSE MENU · GAME CONFIG · DIFFICULTY · TOUCH CONTROLS
    ================================================================ */
 const DIFFICULTIES = {
-  easy:       { label:'Easy',       enemyHp:0.55, enemyDmg:0.35, hazardDmg:0.50, spawnMin:7.5, spawnMax:12.0, maxEnemies:4,  initialEnemies:1, xp:1.25 },
-  medium:     { label:'Medium',     enemyHp:1.00, enemyDmg:1.00, hazardDmg:1.00, spawnMin:4.0, spawnMax:7.0,  maxEnemies:8,  initialEnemies:2, xp:1.00 },
-  hard:       { label:'Hard',       enemyHp:1.35, enemyDmg:1.45, hazardDmg:1.50, spawnMin:2.4, spawnMax:4.2,  maxEnemies:12, initialEnemies:3, xp:1.50 },
-  impossible: { label:'Impossible', enemyHp:2.00, enemyDmg:2.20, hazardDmg:2.20, spawnMin:1.5, spawnMax:2.8,  maxEnemies:17, initialEnemies:4, xp:2.50 },
+  peaceful:   { label:'Peaceful',   enemyHp:1.00, enemyDmg:0.00, hazardDmg:0.00, spawnMin:5.0, spawnMax:8.0,  maxEnemies:6,  initialEnemies:3, xp:1.00, peaceful:true },
+  easy:       { label:'Easy',       enemyHp:0.55, enemyDmg:0.35, hazardDmg:0.50, spawnMin:4.5, spawnMax:7.0,  maxEnemies:12, initialEnemies:3, xp:1.25 },
+  medium:     { label:'Medium',     enemyHp:1.00, enemyDmg:1.00, hazardDmg:1.00, spawnMin:2.4, spawnMax:4.2,  maxEnemies:24, initialEnemies:6, xp:1.00 },
+  hard:       { label:'Hard',       enemyHp:1.35, enemyDmg:1.45, hazardDmg:1.50, spawnMin:1.5, spawnMax:2.8,  maxEnemies:36, initialEnemies:9, xp:1.50 },
+  impossible: { label:'Impossible', enemyHp:2.00, enemyDmg:2.20, hazardDmg:2.20, spawnMin:1.0, spawnMax:1.8,  maxEnemies:51, initialEnemies:12, xp:2.50 },
 };
 function diff(){ return DIFFICULTIES[player.difficulty] || DIFFICULTIES.medium; }
 
@@ -2232,26 +2537,39 @@ function refreshConfigUI(){
   const note = $('diffNote');
   if (note){
     const D = diff();
-    note.textContent =
-      `Max ${D.maxEnemies} foes · ${D.enemyHp.toFixed(2)}× HP · ${D.enemyDmg.toFixed(2)}× DMG · starts with ${D.initialEnemies}`;
+    note.textContent = D.peaceful
+      ? '🕊️ No attacks — sail freely and you cannot sink.'
+      : `Max ${D.maxEnemies} foes · ${D.enemyHp.toFixed(2)}× HP · ${D.enemyDmg.toFixed(2)}× DMG · starts with ${D.initialEnemies}`;
+  }
+}
+
+/* Freeze/unfreeze the simulation without touching any overlay. */
+function setPaused(want){
+  paused = !!want;
+  document.body.classList.toggle('paused', paused);
+  if (paused){
+    keys.clear();
+    mobileInput.jump = false; mobileInput.fire = false;
+    mobileInput.throttle = 0; mobileInput.steer = 0;
+    resetJoyKnob();
+    if (document.exitPointerLock) document.exitPointerLock();
+  } else {
+    lastTime = performance.now();
   }
 }
 
 function togglePause(force){
   const want = (typeof force === 'boolean') ? force : !paused;
   if (want === paused) return;
-  paused = want;
-  $('pauseOverlay').classList.toggle('open', paused);
-  document.body.classList.toggle('paused', paused);
-  if (paused){
-    keys.clear();
-    mobileInput.jump = false; mobileInput.fire = false;
+  if (want){
+    // Opening the pause menu dismisses the upgrades modal.
     document.body.classList.remove('upg-open');
-    if (document.exitPointerLock) document.exitPointerLock();
-    refreshConfigUI();
-  } else {
-    lastTime = performance.now();
+    const di = $('dImprove');
+    if (di) di.classList.remove('on');
   }
+  $('pauseOverlay').classList.toggle('open', want);
+  setPaused(want);
+  if (want) refreshConfigUI();
 }
 
 function saveAndExit(){
@@ -2276,23 +2594,36 @@ document.querySelectorAll('#diffOpts .cfg-btn').forEach(b => {
 $('pauseOverlay').addEventListener('pointerdown', e => {
   if (e.target.id === 'pauseOverlay') togglePause(false);
 });
+$('pauseBtn').onclick = () => { initAudio(); togglePause(true); };
+$('upgClose').onclick = () => toggleUpgrades(false);
 
 /* ---------- Virtual joystick ---------- */
 const joyEl = $('joystick');
 const knobEl = $('stickKnob');
 let joyPointerId = null;
 
+const JOY_DEADZONE = 0.14;
 function updateJoyKnob(clientX, clientY){
   const rect = joyEl.getBoundingClientRect();
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-  const max = rect.width / 2 - 14;
+  const max = rect.width / 2 - 16;
   let dx = clientX - cx, dy = clientY - cy;
   const len = Math.hypot(dx, dy);
   if (len > max){ dx = dx / len * max; dy = dy / len * max; }
   knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-  mobileInput.steer = -dx / max;
-  mobileInput.throttle = -dy / max;
+  // Normalised -1..1 with a small dead zone so a resting thumb doesn't drift.
+  let sx = dx / max, sy = -dy / max;
+  const mag = Math.hypot(sx, sy);
+  if (mag < JOY_DEADZONE){ sx = 0; sy = 0; }
+  else {
+    const scaled = (mag - JOY_DEADZONE) / (1 - JOY_DEADZONE);
+    sx = (sx / mag) * scaled;
+    sy = (sy / mag) * scaled;
+  }
+  // Push left (dx<0 -> sx<0) must steer left, matching the A key.
+  mobileInput.steer = sx;
+  mobileInput.throttle = sy;
 }
 function resetJoyKnob(){
   knobEl.style.transform = 'translate(0px, 0px)';
@@ -2300,18 +2631,19 @@ function resetJoyKnob(){
   mobileInput.throttle = 0;
 }
 joyEl.addEventListener('pointerdown', e => {
-  e.preventDefault(); initAudio();
+  e.preventDefault(); e.stopPropagation(); initAudio();
   joyPointerId = e.pointerId;
   try { joyEl.setPointerCapture(e.pointerId); } catch(err){}
   updateJoyKnob(e.clientX, e.clientY);
 });
 joyEl.addEventListener('pointermove', e => {
   if (e.pointerId !== joyPointerId) return;
-  e.preventDefault();
+  e.preventDefault(); e.stopPropagation();
   updateJoyKnob(e.clientX, e.clientY);
 });
 function endJoy(e){
   if (e.pointerId !== joyPointerId) return;
+  e.stopPropagation();
   joyPointerId = null;
   resetJoyKnob();
 }
@@ -2322,24 +2654,34 @@ function bindPad(id, onDown, onUp){
   const pad = $(id);
   if (!pad) return;
   pad.addEventListener('pointerdown', e => {
-    e.preventDefault(); initAudio();
+    e.preventDefault(); e.stopPropagation(); initAudio();
     pad.classList.add('pressed');
     try { pad.setPointerCapture(e.pointerId); } catch(err){}
     if (onDown) onDown();
   });
-  const up = () => { pad.classList.remove('pressed'); if (onUp) onUp(); };
+  const up = e => { e.stopPropagation(); pad.classList.remove('pressed'); if (onUp) onUp(); };
   pad.addEventListener('pointerup', up);
   pad.addEventListener('pointercancel', up);
   pad.addEventListener('pointerleave', up);
+  pad.addEventListener('pointermove', e => e.stopPropagation());
 }
 bindPad('dJump',    () => { mobileInput.jump = true; }, () => { mobileInput.jump = false; });
 bindPad('dAttack',  () => { mobileInput.fire = true; }, () => { mobileInput.fire = false; });
 bindPad('dBoost',   () => { triggerBoost(); });
 bindPad('dImprove', () => { toggleUpgrades(); });
 
-function toggleUpgrades(){
-  const open = document.body.classList.toggle('upg-open');
-  $('dImprove').classList.toggle('on', open);
+function toggleUpgrades(force){
+  const open = (typeof force === 'boolean') ? force : !document.body.classList.contains('upg-open');
+  if (open && !touchControlsEnabled) return;
+  document.body.classList.toggle('upg-open', open);
+  const di = $('dImprove');
+  if (di) di.classList.toggle('on', open);
+  if (open){
+    if (chartOverlay && chartOverlay.style.display === 'flex') toggleChart();
+    setPaused(true);
+  } else if (!$('pauseOverlay').classList.contains('open')){
+    setPaused(false);
+  }
 }
 
 function updateOrientationClass(){
@@ -2478,6 +2820,7 @@ function makeEnemyState(t, ship, scale, pos, heading, cd, flyAlt){
     wanderAngle: Math.random() * Math.PI * 2,
     wanderTimer: 2 + Math.random() * 3,
     climate: null,
+    tauntCd: 3 + Math.random() * 5,
   };
 }
 
@@ -2562,21 +2905,26 @@ function resetGame(){
   player.alive = true;
   player.vy = 0; player.airY = 0; player.jumpT = 0; player.hurtT = 0; player.cd = 0;
   player.boostActive = false; player.boostTimer = 0; player.boostCd = 0;
+  player.anchored = false;
   chartedRoute = [];
   salvageState.active = false;
   resetSkyBreak();
 
   for (const h of hazards) removeFromScene(h);
   for (const t of treasures) removeFromScene(t);
-  hazards.length = 0; treasures.length = 0;
+  for (const hv of havens) removeFromScene(hv);
+  hazards.length = 0; treasures.length = 0; havens.length = 0;
+  playerSafe = false;
 
   for (let i = 0; i < 14; i++) spawnRandomHazard(true);
   for (let i = 0; i < 4; i++) spawnTreasureHazard(true);
+  for (let i = 0; i < 3; i++) spawnSafeHaven(true);
 
   const D = diff();
   for (let i = 0; i < D.initialEnemies; i++) spawnEnemyClose();
 
   weather.stage = 0; weather.level = 0; weather.next = STORMS[0].dur;
+  celestial.day = 1;
   shake = 0; gameOver = false; elapsed = 0; spawnTimer = 3;
   $('over').style.display = 'none';
   $('autopilotBadge').style.display = 'none';
@@ -2695,6 +3043,18 @@ function fireCannons(){
   setTimeout(() => cross.classList.remove('fire'), 120);
 }
 
+/* --------------------------------------------------- ANCHOR */
+function toggleAnchor(){
+  if (salvageState.active || !player.alive || gameOver || paused) { player.anchored = false; return; }
+  const inSafe = playerInSafeHaven();
+  if (!inSafe || bloodMoon.active){ player.anchored = false; return; }
+  initAudio();
+  player.anchored = !player.anchored;
+  playSound(player.anchored ? 'crane' : 'jump');
+  spawnFlash(player.pos.clone().setY(1.5), player.anchored ? 2.6 : 1.6, player.anchored ? 0x5dff8a : 0xffd27a);
+  updateUI();
+}
+
 /* --------------------------------------------------- SALVAGE CRANE */
 function triggerSalvage(){
   if (salvageState.active || !player.alive || gameOver || paused) return;
@@ -2721,6 +3081,27 @@ function setCable(boat, y){
     new THREE.Vector3(1.7, 2.4, 0),
     new THREE.Vector3(1.7, y, 0),
   ]);
+}
+
+const LootTables = {
+  common: ['Sunken Trinket','One (1) Wet Sock','A Rock. Just A Rock.','Cursed Ladle'],
+  rare:   ['Sunken Relic','Slightly Haunted Cutlery','Barrel of Regret',
+           'Signed Portrait of a Kraken'],
+  epic:   ['Ancient Sunken Hoard','Chest of Extremely Specific Coins',
+           'The Captain\'s Missing Left Boot'],
+  legend: ['LEGENDARY ABYSSAL TREASURE','THE FORBIDDEN SANDWICH',
+           'CROWN OF THE DROWNED KING (SLIGHTLY DENTED)',
+           'A SECOND, SMALLER BOAT'],
+};
+function rollLoot(){
+  const roll = Math.random();
+  let tier, xp;
+  if (roll < 0.55){ tier = 'common'; xp = Math.floor(40 + Math.random()*40); }
+  else if (roll < 0.80){ tier = 'rare'; xp = Math.floor(85 + Math.random()*65); }
+  else if (roll < 0.94){ tier = 'epic'; xp = Math.floor(170 + Math.random()*130); }
+  else { tier = 'legend'; xp = Math.floor(350 + Math.random()*200); }
+  const items = LootTables[tier];
+  return { name: items[Math.floor(Math.random()*items.length)], xp };
 }
 
 function updateSalvageCrane(dt){
@@ -2753,12 +3134,9 @@ function updateSalvageCrane(dt){
       salvageState.phase = 'done';
       b.clawGroup.position.y = 0.3;
       playSound('treasure');
-      const roll = Math.random();
-      let xpAward = 0;
-      let rarity = "Sunken Trinket";
-      if (roll < 0.50){ xpAward = Math.floor(45 + Math.random()*35); rarity = "Sunken Relic"; }
-      else if (roll < 0.85){ xpAward = Math.floor(95 + Math.random()*85); rarity = "Ancient Sunken Hoard"; }
-      else { xpAward = Math.floor(220 + Math.random()*240); rarity = "LEGENDARY ABYSSAL TREASURE"; }
+      const loot = rollLoot();
+      const xpAward = loot.xp;
+      const rarity = loot.name;
 
       player.bank += xpAward;
       player.treasures++;
@@ -2861,6 +3239,15 @@ function updateUI(){
 
   el('autopilotBadge').style.display =
     (chartedRoute && chartedRoute.length > 0) ? 'inline-flex' : 'none';
+  const safeEl = el('safeBadge');
+  if (playerSafe){
+    safeEl.style.display = 'inline-flex';
+    if (bloodMoon.active) safeEl.textContent = '🩸 SAFE HARBOR COMPROMISED — RUN';
+    else if (player.anchored) safeEl.textContent = '⚓ ANCHORED — PRESS E TO WEIGH ANCHOR';
+    else safeEl.textContent = '🟢 SAFE HARBOR — PRESS E TO ANCHOR';
+  } else {
+    safeEl.style.display = 'none';
+  }
 }
 
 /* --------------------------------------------------- CONTROLS */
@@ -2868,14 +3255,18 @@ addEventListener('keydown', e => {
   initAudio();
   if (e.code === 'Escape'){
     e.preventDefault();
-    if (chartOverlay.style.display === 'flex') toggleChart();
+    if (document.body.classList.contains('upg-open')) toggleUpgrades(false);
+    else if (chartOverlay.style.display === 'flex') toggleChart();
     else togglePause();
     return;
   }
   if (paused) return;
   keys.add(e.code);
   if (e.code === 'KeyM') toggleChart();
-  if (e.code === 'KeyE') triggerSalvage();
+  if (e.code === 'KeyE'){
+    if (playerInSafeHaven() && !bloodMoon.active) toggleAnchor();
+    else triggerSalvage();
+  }
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') triggerBoost();
   if (e.code === 'Space'){
     e.preventDefault();
@@ -2898,22 +3289,28 @@ document.addEventListener('pointerlockchange', () => {
   isPointerLocked = (document.pointerLockElement === renderer.domElement);
 });
 renderer.domElement.addEventListener('pointerdown', e => {
+  if (camPointerId !== null && camPointerId !== e.pointerId) return;
+  camPointerId = e.pointerId;
   isPointerDragging = true;
   pointerStartX = lastPointerX = e.clientX;
   pointerStartY = lastPointerY = e.clientY;
 });
 addEventListener('pointermove', e => {
-  const dx = isPointerLocked ? e.movementX : (isPointerDragging ? e.clientX - lastPointerX : 0);
-  const dy = isPointerLocked ? e.movementY : (isPointerDragging ? e.clientY - lastPointerY : 0);
-  if (isPointerLocked || isPointerDragging){
-    lastPointerX = e.clientX;
-    lastPointerY = e.clientY;
-    camYaw -= dx * 0.0040;
-    camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.0040, -1.48, 1.15);
-    player.heading = camYaw;
+  // Only the pointer that began on the canvas may orbit the camera.
+  if (!isPointerLocked){
+    if (!isPointerDragging || e.pointerId !== camPointerId) return;
   }
+  const dx = isPointerLocked ? e.movementX : (e.clientX - lastPointerX);
+  const dy = isPointerLocked ? e.movementY : (e.clientY - lastPointerY);
+  lastPointerX = e.clientX;
+  lastPointerY = e.clientY;
+  camYaw -= dx * 0.0040;
+  camPitch = THREE.MathUtils.clamp(camPitch + dy * 0.0040, -1.48, 1.15);
+  player.heading = camYaw;
 });
 addEventListener('pointerup', e => {
+  if (e.pointerId !== camPointerId) return;
+  camPointerId = null;
   if (!isPointerDragging) return;
   isPointerDragging = false;
   const totalDist = Math.hypot(e.clientX - pointerStartX, e.clientY - pointerStartY);
@@ -3043,6 +3440,16 @@ function renderFullChart(){
     ctx.fillText('💎', cp.x-7, cp.y+6);
   });
 
+  havens.forEach(hv => {
+    const cp = worldToChart(hv.pos.x, hv.pos.z);
+    ctx.fillStyle = 'rgba(93,255,138,0.4)';
+    ctx.beginPath(); ctx.arc(cp.x, cp.y, 17, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#2fae5a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cp.x, cp.y, 17, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#1c5434'; ctx.font = '14px sans-serif';
+    ctx.fillText('🛟', cp.x-7, cp.y+5);
+  });
+
   enemies.forEach(e => {
     const cp = worldToChart(e.pos.x, e.pos.z);
     // Bigger foes get bigger icons so their tier reads at a glance
@@ -3131,6 +3538,16 @@ function renderMiniMap(){
     ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 5, 0, Math.PI*2); ctx.fill();
   });
 
+  havens.forEach(hv => {
+    const dx = (hv.pos.x - player.pos.x) * scale;
+    const dy = (hv.pos.z - player.pos.z) * scale;
+    if (Math.hypot(dx, dy) > cx - 5) return;
+    ctx.fillStyle = 'rgba(93,255,138,0.35)';
+    ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 8, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#5dff8a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx + dx, cy + dy, 8, 0, Math.PI*2); ctx.stroke();
+  });
+
   enemies.forEach(e => {
     const dx = (e.pos.x - player.pos.x) * scale;
     const dy = (e.pos.z - player.pos.z) * scale;
@@ -3201,7 +3618,7 @@ function update(dt){
 
   /* Autopilot (also drives the bank/lean via player.steer) */
   player.steer = 0;
-  if (player.alive && !gameOver && chartedRoute && chartedRoute.length > 0){
+  if (player.alive && !gameOver && !player.anchored && chartedRoute && chartedRoute.length > 0){
     const target = chartedRoute[0];
     const dx = target.x - player.pos.x;
     const dz = target.z - player.pos.z;
@@ -3224,41 +3641,46 @@ function update(dt){
   if (player.alive && !gameOver && !salvageState.active){
     const throt = (isDown('KeyW','ArrowUp') ? 1 : 0) - (isDown('KeyS','ArrowDown') ? 1 : 0) + mobileInput.throttle;
     const steer = (isDown('KeyA','ArrowLeft') ? 1 : 0) - (isDown('KeyD','ArrowRight') ? 1 : 0) - mobileInput.steer;
-    player.steer = steer;
+    player.steer = player.anchored ? 0 : steer;
 
-    if (Math.abs(steer) > 0.06){
-      camYaw += steer * CFG.turnSpeed * dt * (player.vel < -1 ? -1 : 1);
-      player.heading = camYaw;
+    if (player.anchored){
+      // Anchored: hold fast — wind, current and inertia can't move the boat.
+      player.vel = 0; player.vy = 0; player.airY = 0;
+    } else {
+      if (Math.abs(steer) > 0.06){
+        camYaw += steer * CFG.turnSpeed * dt * (player.vel < -1 ? -1 : 1);
+        player.heading = camYaw;
+      }
+
+      const speedMult = player.speed / CFG.statBase;
+      const boostBoost = player.boostActive ? 2.2 : 1.0;
+
+      if (Math.abs(throt) > 0.06){
+        player.vel += throt * CFG.baseAccel * speedMult * boostBoost * dt;
+      }
+
+      player.vel -= player.vel * CFG.drag * dt;
+      const maxV = CFG.baseMaxSpeed * speedMult * boostBoost;
+      player.vel = THREE.MathUtils.clamp(player.vel, -maxV*0.4, maxV);
+      player.vel += weather.wind * 2.5 * dt;
+
+      player.pos.x += Math.sin(player.heading) * player.vel * dt;
+      player.pos.z += Math.cos(player.heading) * player.vel * dt;
+
+      player.jumpT -= dt;
+      if ((isDown('Space') || mobileInput.jump) && player.jumpT <= 0 && player.airY <= 0.01){
+        player.vy = CFG.jumpV;
+        player.jumpT = CFG.jumpCd;
+        playSound('jump');
+        spawnFlash(player.pos.clone().setY(0.4), 2.4, 0xcfe9f5);
+      }
+      if (player.airY > 0 || player.vy > 0){
+        player.vy -= CFG.gravity * dt;
+        player.airY = Math.max(0, player.airY + player.vy * dt);
+        if (player.airY === 0) player.vy = 0;
+      }
+      player.pos.y = player.airY;
     }
-
-    const speedMult = player.speed / CFG.statBase;
-    const boostBoost = player.boostActive ? 2.2 : 1.0;
-
-    if (Math.abs(throt) > 0.06){
-      player.vel += throt * CFG.baseAccel * speedMult * boostBoost * dt;
-    }
-
-    player.vel -= player.vel * CFG.drag * dt;
-    const maxV = CFG.baseMaxSpeed * speedMult * boostBoost;
-    player.vel = THREE.MathUtils.clamp(player.vel, -maxV*0.4, maxV);
-    player.vel += weather.wind * 2.5 * dt;
-
-    player.pos.x += Math.sin(player.heading) * player.vel * dt;
-    player.pos.z += Math.cos(player.heading) * player.vel * dt;
-
-    player.jumpT -= dt;
-    if ((isDown('Space') || mobileInput.jump) && player.jumpT <= 0 && player.airY <= 0.01){
-      player.vy = CFG.jumpV;
-      player.jumpT = CFG.jumpCd;
-      playSound('jump');
-      spawnFlash(player.pos.clone().setY(0.4), 2.4, 0xcfe9f5);
-    }
-    if (player.airY > 0 || player.vy > 0){
-      player.vy -= CFG.gravity * dt;
-      player.airY = Math.max(0, player.airY + player.vy * dt);
-      if (player.airY === 0) player.vy = 0;
-    }
-    player.pos.y = player.airY;
 
     if ((isDown('KeyF') || mobileInput.fire) && player.cd <= 0){
       player.cd = CFG.fireCd;
@@ -3318,7 +3740,7 @@ function update(dt){
       for (let r = 0; r < h.rings.length; r++){
         h.rings[r].rotation.y = time * (1.5 + r*0.6);
       }
-      if (dist < h.radius){
+      if (dist < h.radius && !player.anchored){
         const pull = 1 - dist/h.radius;
         player.pos.x += dx/dist * pull * 28 * dt;
         player.pos.z += dz/dist * pull * 28 * dt;
@@ -3387,6 +3809,23 @@ function update(dt){
   }
   while (treasures.length < 4) spawnTreasureHazard(false);
 
+  /* Safe harbors */
+  playerSafe = playerInSafeHaven();
+  for (let i = havens.length - 1; i >= 0; i--){
+    const hv = havens[i];
+    hv.group.position.set(hv.pos.x, 0, hv.pos.z);
+    hv.beam.rotation.y += dt * 0.5;
+    hv.ring.rotation.z += dt * 0.7;
+    hv.core.position.y = 7 + Math.sin(time * 2 + hv.pos.x) * 1.3;
+    const safeScale = playerSafe ? 1.15 : 1.0;
+    hv.ring.scale.setScalar(safeScale);
+    if (Math.hypot(player.pos.x - hv.pos.x, player.pos.z - hv.pos.z) > 900){
+      removeFromScene(hv);
+      havens.splice(i, 1);
+    }
+  }
+  while (havens.length < 3) spawnSafeHaven(false);
+
   /* Enemies */
   if (!gameOver){
     spawnTimer -= dt;
@@ -3397,9 +3836,17 @@ function update(dt){
     }
   }
 
+  const night = isNight();
+  const peaceful = !!diff().peaceful;
+  // Safe Harbors grant shelter — except during Moon Blood, when they're useless.
+  const safe = playerSafe && !bloodMoon.active;
   for (const e of enemies){
-    // Hostile iff type is aggressive OR has been provoked by taking damage
-    const aggressive = !!e.type.aggressive || e.provoked;
+    // Hostile iff type is aggressive OR has been provoked by taking damage.
+    // At night, or in Peaceful mode, enemies never attack and only wander about.
+    // Moon Blood ignores the night and turns EVERY enemy hostile at once.
+    // A Safe Harbor shields the player: no enemy will engage while inside one.
+    const aggressive = (bloodMoon.active || !!e.type.aggressive || e.provoked)
+                       && (bloodMoon.active || !night) && !peaceful && !safe;
 
     const toP = new THREE.Vector3(player.pos.x - e.pos.x, 0, player.pos.z - e.pos.z);
     const dist = toP.length() || 1;
@@ -3450,12 +3897,17 @@ function update(dt){
 
     // Hostile enemies fire
     e.cd -= dt;
+    e.tauntCd -= dt;
     if (!gameOver && aggressive && dist < enemyFireRange(e) && e.cd <= 0){
       e.cd = e.type.cd * (0.75 + Math.random()*0.5);
       const aim = new THREE.Vector3(player.pos.x - e.pos.x, (player.pos.y+1.5) - e.ship.group.position.y, player.pos.z - e.pos.z).normalize();
       const muzzle = e.ship.group.position.clone().add(aim.clone().multiplyScalar(2.0 * Math.pow(e.scale, 0.4)));
       spawnBall(muzzle, aim.multiplyScalar(60), true, e.type.dmg * diff().enemyDmg, 0.48, 0xff5a36);
       spawnFlash(muzzle, 1.8, 0xff7e4d);
+      if (e.tauntCd <= 0){
+        e.tauntCd = 5 + Math.random() * 8;
+        if (Math.random() < 0.35) taunt(e, TAUNTS[Math.floor(Math.random() * TAUNTS.length)]);
+      }
     }
 
     // Hostile enemies ram
@@ -3496,7 +3948,7 @@ function update(dt){
     if (b.life <= 0){ b.live = false; b.mesh.visible = false; continue; }
 
     if (b.team){
-      if (player.alive && !gameOver && p.distanceToSquared(player.pos) < 18){
+      if (player.alive && !gameOver && !safe && p.distanceToSquared(player.pos) < 18){
         b.live = false; b.mesh.visible = false;
         player.hp -= b.dmg;
         explode(p.clone(), 0.4);
@@ -3588,6 +4040,44 @@ function update(dt){
   renderer.render(scene, camera);
 }
 
+const KILL_VERBS = ['SUNK','YEETED','BANISHED','SENT TO DAVY JONES','REKT','UNSUBSCRIBED','COMPOSTED','TENDERIZED','GENTLY ESCORTED TO THE ABYSS','CONVERTED TO CORAL'];
+
+const TAUNTS = [
+  'yeet','nice shot, coward','my grandmother sails better',
+  'is that ALL your cannons do?','I have a family!!',
+  'you fight like a dairy farmer','I am literally a fish',
+  'stop that','I was having a nice day',
+];
+
+function taunt(e, text){
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(253,246,226,0.96)';
+  g.beginPath(); g.roundRect(8, 8, 496, 96, 28); g.fill();
+  g.strokeStyle = '#a67424'; g.lineWidth = 6; g.stroke();
+  g.fillStyle = '#2a1906';
+  g.font = 'bold 40px "Trebuchet MS", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(text, 256, 56, 460);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: false,
+  }));
+  const s = Math.max(1, e.scale * 0.6);
+  sprite.scale.set((20 * s) / e.scale, (5 * s) / e.scale, 1);
+  sprite.position.y = (8 * s) / e.scale;
+  e.ship.group.add(sprite);
+
+  setTimeout(() => {
+    e.ship.group.remove(sprite);
+    sprite.material.map.dispose();
+    sprite.material.dispose();
+  }, 2000);
+}
+
 function killEnemy(e){
   const i = enemies.indexOf(e);
   explode(e.ship.group.position.clone().setY(2), 1.8 * Math.min(3, Math.pow(e.scale, 0.4)));
@@ -3596,7 +4086,8 @@ function killEnemy(e){
   player.kills++;
   const k = $('kill');
   const tierNote = e.scale >= 10 ? ' ⚡COLOSSAL' : (e.scale >= 5 ? ' ⚔️MIGHTY' : '');
-  k.textContent = `${e.type.name.toUpperCase()}${tierNote} SUNK! +${xpVal} XP`;
+  const verb = KILL_VERBS[Math.floor(Math.random() * KILL_VERBS.length)];
+  k.textContent = `${e.type.name.toUpperCase()}${tierNote} ${verb}! +${xpVal} XP`;
   k.style.opacity = '1';
   clearTimeout(k._t); k._t = setTimeout(() => k.style.opacity = '0', 1200);
   disposeEnemy(e);
@@ -3624,7 +4115,8 @@ renderer.setAnimationLoop(now => {
 });
 
 window.game = {
-  player, hazards, treasures, enemies,
+  player, hazards, treasures, enemies, havens,
+  bloodMoon, celestial,
   calcStats, buyUpgrade, computeAimTarget,
   triggerSalvage, triggerBoost, fireCannons, resetGame, saveGame, loadGame,
   togglePause, setDifficulty, setSound, setSfx, setTouchControls, DIFFICULTIES, ENEMY_TYPES,
