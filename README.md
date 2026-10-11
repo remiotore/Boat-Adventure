@@ -28,8 +28,7 @@ Just open `index.html` in a modern browser and set sail. No build step, no depen
 - **Live mini-map** with hazards, enemies, treasure, and route overlay
 - **Ship growth** — hull, boiler, turbine, and cannons visually scale as you upgrade
 - **Procedural audio** synthesized via Web Audio API (cannons, splashes, treasure chimes, boost, crane)
-- **Pause menu** (**ESC**) with Peaceful / Easy / Medium / Hard / Impossible difficulty presets, Sound & SFX toggles, a Touch-controls toggle, and Save & Exit
-- **Touch controls** — an on-screen instrument joystick plus four action buttons (Attack, Jump, Boost, Upgrades) appear automatically on touch devices; hazards range from tiny rocks to huge islands
+- **Pause menu** (**ESC**) with Peaceful / Easy / Medium / Hard / Impossible difficulty presets, Sound & SFX toggles, and Save & Exit
 - **Auto-save** to `localStorage` every 5 seconds (plus manual Reset)
 
 ---

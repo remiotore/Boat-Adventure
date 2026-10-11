@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
-<title>Kingdom of Storms — Phantom Seas &amp; Stormalong Adventures</title>
+<title>Kingdom of Storms — The Red Line, Sea Kings &amp; Viking Seas</title>
 <style>
   :root {
     --ui: #fdf6e2;
@@ -74,6 +74,12 @@
     padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #d6ffe2;
     margin-top: 6px; font-weight: bold; text-shadow: 0 0 8px #2fae5a;
     animation: pulse 1.8s infinite;
+  }
+
+  #zoneBadge {
+    display: none; align-items: center; gap: 6px;
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold;
+    margin-top: 6px;
   }
 
   /* Top Right: Upgrades */
@@ -243,6 +249,12 @@
     font-size: 22px; font-weight: bold; letter-spacing: 0.08em; opacity: 0;
     color: #ffd86b; text-shadow: 0 2px 8px #000, 0 0 14px #ffaa22; transition: opacity 0.25s;
     pointer-events: none; text-align: center;
+  }
+  #redlineWarn {
+    display: none; position: absolute; left: 50%; top: 13%; transform: translateX(-50%);
+    font-size: 18px; font-weight: bold; letter-spacing: 0.14em; text-align: center;
+    color: #ffb199; text-shadow: 0 2px 8px #000, 0 0 16px rgba(220,60,30,0.85);
+    pointer-events: none; animation: pulse 1.2s infinite; white-space: nowrap;
   }
   #saveToast {
     position: absolute; right: 16px; top: 310px; font-size: 11px;
@@ -520,6 +532,10 @@
     <div id="safeBadge">
       🟢 SAFE HARBOR — NO ENEMY WILL STRIKE YOU HERE
     </div>
+
+    <div id="zoneBadge">
+      🌊 THE GRAND LINE — STORM CORRIDOR
+    </div>
   </div>
 
   <button id="soundBtn" title="Toggle Sound">🔊 Audio</button>
@@ -590,6 +606,7 @@
   <div id="cross"><div id="cross-dot"></div></div>
   <div id="kill">Enemy Sunk!</div>
   <div id="treasureBanner">✨ Treasure Salvaged!</div>
+  <div id="redlineWarn">⚠️ THE RED LINE — ONLY THE REVERSE MOUNTAIN PASS CROSSES IT ⚠️</div>
   
   <div id="hint">
     MOVE MOUSE Orbit &amp; Aim Center · CLICK/F Fire · SPACE Jump Obstacles/Clear Line · SHIFT Propulsor · RIGHT CLICK/E Salvage · M Full Map · ESC Pause
@@ -615,7 +632,7 @@
     <canvas id="chartCanvas" width="860" height="490"></canvas>
     <div id="chartFooter">
       <div>
-        <span><b>Legend:</b> ⛵ Boat &nbsp; 💀 Phantom Ship &nbsp; 🐉 Leviathan &nbsp; 🐙 Kraken &nbsp; 🐟 Angler &nbsp; 🦅 Flying Drake &nbsp; 🏴‍☠️ Titan Dreadnought &nbsp; 🌿 Plants &nbsp; ❄️ Ice &nbsp; 💎 Deep Light &nbsp; 🛟 Safe Harbor</span>
+        <span><b>Legend:</b> ⛵ Boat &nbsp; 💀 Phantom Ship &nbsp; 🐉 Leviathan &nbsp; 🐙 Kraken &nbsp; 🐟 Angler &nbsp; 🦅 Flying Drake &nbsp; 🪶 Storm Roc &nbsp; 🛶 Viking Longship &nbsp; 🐍 Sea King &nbsp; 🐲 Jörmungandr &nbsp; 🏴‍☠️ Titan Dreadnought &nbsp; 🌿 Plants &nbsp; ❄️ Ice &nbsp; 💎 Deep Light &nbsp; 🛟 Safe Harbor &nbsp; 🔴 Red Line (N–S divider) &nbsp; 🌊 Grand Line &nbsp; 🕸️ Calm Belt</span>
       </div>
       <div>
         <button class="chart-btn danger" id="clearRouteBtn">Clear Route (SPACE)</button>
@@ -628,7 +645,7 @@
 <div id="pauseOverlay">
   <div id="pauseFrame">
     <h2 id="pauseTitle">⚓ PAUSED</h2>
-    <div id="pauseSub">Kingdom of Storms — Captain's Quarters</div>
+    <div id="pauseSub">Kingdom of Storms — Red Line · Sea Kings · Viking Seas</div>
 
     <div class="pause-cols">
       <div class="pause-col">
@@ -673,7 +690,7 @@
         <div class="cfg-group">
           <div class="cfg-label">Interface</div>
           <div class="cfg-opts">
-            <button class="cfg-btn full" id="cfgTouch">📱 Touch Controls: Off</button>
+
           </div>
         </div>
 
@@ -687,7 +704,7 @@
 </div>
 
 <!-- ===================== LANDSCAPE ROTATE PROMPT (MOBILE ONLY) ===================== -->
-<div id="rotateOverlay">
+
   <div class="rotate-box">
     <div class="rotate-icon">📱</div>
     <h2>Rotate Your Device</h2>
@@ -792,6 +809,28 @@ const CFG = {
   fireCd: 0.35, ballSpeed: 165,
   jumpV: 26, gravity: 62, jumpCd: 0.55,
 };
+
+/* =========================================================
+   ONE PIECE WORLD LAYOUT — an edgeless, curved (globe-like) sea.
+   Coordinates wrap in BOTH axes, so there is no border and no cage.
+   · THE RED LINE : a single colossal north–south mountain range at x = 0
+     that splits the world into East and West. The only crossing is the
+     Reverse Mountain pass at z = 0 (every world away).
+   · THE GRAND LINE : an east–west corridor along z = 0, perpendicular to
+     the Red Line, with chaotic storm seas.
+   · THE CALM BELTS : two windless bands flanking the Grand Line where
+     nothing sails — and where Sea Kings dwell.
+   ========================================================= */
+const WORLD_W = 3600;            // east–west circumference (wraps)
+const WORLD_H = 3600;            // north–south circumference (wraps)
+const WALL_THICK = 96;           // Red Line mountain thickness
+const REVERSE_GAP = 120;         // half-width of the Reverse Mountain pass
+const GRANDLINE_HALF = 170;      // half-width of the Grand Line corridor
+const CALMBELT_OUTER = 380;      // outer edge of the Calm Belts
+
+/* Signed distance from v to the nearest multiple of period (range -period/2..period/2). */
+const wrapOffset = (v, period) => v - period * Math.round(v / period);
+const nearestMultiple = (v, period) => period * Math.round(v / period);
 
 /* ------------------------------------------------------------------ HELPERS */
 const angleDelta = (from, to) => ((to - from + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
@@ -1126,6 +1165,9 @@ const seaUniforms = {
   uShal: { value: new THREE.Color(0x28a6b8) },
   uWaveAmp: { value: 1.0 },
 };
+// Zone tints — the glassy Calm Belt vs. the inky Grand Line.
+const CALM_DEEP = new THREE.Color(0x14566b), CALM_SHAL = new THREE.Color(0x86c9b8);
+const GRAND_DEEP = new THREE.Color(0x041a30), GRAND_SHAL = new THREE.Color(0x14546b);
 
 const seaGeo = new THREE.PlaneGeometry(CFG.seaSize, CFG.seaSize, CFG.seaSeg, CFG.seaSeg);
 seaGeo.rotateX(-Math.PI/2);
@@ -1302,6 +1344,9 @@ function updateDayNightAndWeather(dt){
 
   const curWeather = STORMS[weather.stage];
   weather.level += (curWeather.level - weather.level) * Math.min(1, dt * 0.25);
+  // Zone climates: the Grand Line always rages; the Calm Belts never blow.
+  if (player.inGrandLine) weather.level = Math.max(weather.level, 0.72);
+  else if (player.inCalmBelt) weather.level = Math.min(weather.level, 0.06);
   weather.wind = 0.4 + weather.level * 1.6;
 
   const stormGrey = curWeather.fog;
@@ -1327,6 +1372,16 @@ function updateDayNightAndWeather(dt){
     seaUniforms.uDeep.value.lerp(PAL.seaSunsetDeep, sunsetFactor * 0.45);
     seaUniforms.uShal.value.lerp(PAL.seaSunsetShal, sunsetFactor * 0.45);
   }
+  // Zone tint + swell: glassy Calm Belt, towering Grand Line seas.
+  if (player.inCalmBelt){
+    seaUniforms.uDeep.value.lerp(CALM_DEEP, 0.35);
+    seaUniforms.uShal.value.lerp(CALM_SHAL, 0.45);
+  } else if (player.inGrandLine){
+    seaUniforms.uDeep.value.lerp(GRAND_DEEP, 0.45);
+    seaUniforms.uShal.value.lerp(GRAND_SHAL, 0.4);
+  }
+  const waveTarget = player.inGrandLine ? 1.7 : (player.inCalmBelt ? 0.35 : 1.0);
+  seaUniforms.uWaveAmp.value += (waveTarget - seaUniforms.uWaveAmp.value) * Math.min(1, dt * 0.6);
 
   const cloudTint = isDay
     ? PAL.cloudDay.clone().lerp(PAL.cloudSunset, sunsetFactor)
@@ -1963,6 +2018,249 @@ function makePirateShip(){
   return { group:g, lb, mats:[ironMat, redMat, sailMat, skinMat, hatMat, ...lb.mats], flash:0, kind:'pirate', hitRadius:4.5 };
 }
 
+/* ------------------------------------------------------- VIKING RAIDS */
+function makeVikingLongship(){
+  const g = new THREE.Group();
+  const woodMat  = new THREE.MeshLambertMaterial({ color: 0x5b3a22 });
+  const darkMat  = new THREE.MeshLambertMaterial({ color: 0x34210f });
+  const sailMat  = new THREE.MeshLambertMaterial({ map: SAIL_TEX, side: THREE.DoubleSide });
+  const skinMat  = new THREE.MeshLambertMaterial({ color: 0xe8c39a });
+  const helmMat  = new THREE.MeshLambertMaterial({ color: 0x8a8f96 });
+  const goldMat  = new THREE.MeshLambertMaterial({ color: 0xd9a441 });
+  const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xffcf4d });
+  const shieldMats = [0xa8322a, 0xd9c26a, 0x2f6f8a, 0x3c7a3a]
+    .map(c => new THREE.MeshLambertMaterial({ color: c }));
+
+  g.add(new THREE.Mesh(hullGeometry(7.4, 2.7, 2.0), woodMat));
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.25, 5.4), darkMat);
+  deck.position.y = 0.8; g.add(deck);
+  const mast = new THREE.Mesh(MAST_GEO, darkMat); mast.position.y = 3.2; g.add(mast);
+  const yard = new THREE.Mesh(BOOM_GEO, darkMat); yard.position.y = 4.0; g.add(yard);
+  const sail = new THREE.Mesh(SAIL_GEO, sailMat); sail.position.set(0, 3.2, 0.05); g.add(sail);
+
+  // Drakkar dragon-head prow
+  const prow = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.5, 3.0, 7), woodMat);
+  prow.rotation.x = 0.55; prow.position.set(0, 1.5, 3.4); g.add(prow);
+  const dragonHead = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.7, 6), darkMat);
+  dragonHead.rotation.x = -1.0; dragonHead.position.set(0, 3.1, 4.0); g.add(dragonHead);
+  const jowl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 1.0), woodMat);
+  jowl.position.set(0, 2.6, 4.2); g.add(jowl);
+  const dragonEye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 6), eyeMat);
+  dragonEye.position.set(0, 3.1, 4.55); g.add(dragonEye);
+
+  // Round shields lashed along the gunwales
+  for (const s of [-1, 1]){
+    for (let i = 0; i < 5; i++){
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.56, 0.12, 12), shieldMats[(i + (s > 0 ? 1 : 0)) % shieldMats.length]);
+      sh.rotation.z = Math.PI / 2;
+      sh.position.set(s * 1.48, 1.0, -2.2 + i * 1.1);
+      g.add(sh);
+      const boss = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 6), goldMat);
+      boss.position.set(s * 1.6, 1.0, -2.2 + i * 1.1);
+      g.add(boss);
+    }
+  }
+  // Oars
+  for (const s of [-1, 1]){
+    for (let i = 0; i < 3; i++){
+      const oar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 3.0, 6), woodMat);
+      oar.rotation.z = s * 1.15; oar.position.set(s * 2.2, 0.2, -1.5 + i * 1.5);
+      g.add(oar);
+    }
+  }
+  // Bearded crew with helms
+  const crewMats = { body: darkMat, skin: skinMat, hat: helmMat };
+  addCrew(g, crewMats, -0.7, 1.0, -0.6);
+  addCrew(g, crewMats,  0.7, 1.0, -0.6);
+  addCrew(g, crewMats,  0.0, 1.0,  1.5);
+
+  const lb = createEnemyLifeBar(5.0, 0.6); lb.barGroup.position.set(0, 7.0, 0); g.add(lb.barGroup);
+  const ship = { group:g, lb, mats:[woodMat, darkMat, ...shieldMats, sailMat, skinMat, helmMat, goldMat, eyeMat, ...lb.mats], flash:0, kind:'viking', hitRadius:5.4 };
+  ship.barTopLocal = 7.0;
+  return ship;
+}
+
+/* ------------------------------------------------------- SEA KING (One Piece) */
+function makeSeaKing(){
+  const g = new THREE.Group();
+  const skinMat  = new THREE.MeshLambertMaterial({ color: 0x1c4f4a, emissive: 0x08201f });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: 0xcbb894 });
+  const finMat   = new THREE.MeshLambertMaterial({ color: 0x2f7a6a });
+  const hornMat  = new THREE.MeshLambertMaterial({ color: 0xe8dcc0 });
+  const toothMat = new THREE.MeshLambertMaterial({ color: 0xfff6e6 });
+  const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xffd23f });
+
+  // Submerged serpentine body with dorsal humps
+  const humps = [];
+  for (let i = 0; i < 7; i++){
+    const r = 2.7 - i * 0.22;
+    const hump = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), skinMat);
+    hump.position.set(0, -0.4, -2.5 - i * 2.6);
+    hump.scale.set(1.05, 0.85, 1.1);
+    g.add(hump); humps.push(hump);
+    const spine = new THREE.Mesh(new THREE.ConeGeometry(0.38, 1.6, 5), finMat);
+    spine.position.set(0, r * 0.8, hump.position.z); g.add(spine);
+  }
+
+  // Long neck rising from the deep
+  const neck = new THREE.Group();
+  neck.position.set(0, 0.4, 3.0);
+  for (let i = 0; i < 6; i++){
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(1.25 - i * 0.09, 1.5 - i * 0.09, 1.7, 10), skinMat);
+    seg.position.set(0, i * 1.45, i * 0.35);
+    neck.add(seg);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22 - i * 0.08, 0.13, 6, 12), finMat);
+    ring.rotation.x = Math.PI / 2; ring.position.copy(seg.position);
+    neck.add(ring);
+  }
+  g.add(neck);
+
+  // Colossal skull
+  const head = new THREE.Group();
+  head.position.set(0, 6 * 1.45, 6 * 0.35);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(1.9, 14, 12), skinMat);
+  skull.scale.set(1.0, 0.95, 1.5); head.add(skull);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 2.6), skinMat);
+  snout.position.set(0, -0.3, 2.2); head.add(snout);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.9, 2.8), skinMat);
+  jaw.position.set(0, -1.35, 2.0); jaw.rotation.x = 0.28; head.add(jaw);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.5, 2.4), bellyMat);
+  mouth.position.set(0, -0.9, 2.2); head.add(mouth);
+  for (let i = -3; i <= 3; i++){
+    const tu = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.95, 5), toothMat);
+    tu.position.set(i * 0.32, -0.65, 3.4); tu.rotation.x = 0.5; head.add(tu);
+    const tl = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.95, 5), toothMat);
+    tl.position.set(i * 0.3, -1.85, 3.3); tl.rotation.x = 2.6; head.add(tl);
+  }
+  for (const s of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), eyeMat);
+    eye.position.set(s * 1.15, 0.55, 2.0); head.add(eye);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.4, 6), hornMat);
+    horn.rotation.z = s * 0.5; horn.rotation.x = -0.4;
+    horn.position.set(s * 0.9, 1.6, 0.2); head.add(horn);
+  }
+  g.add(head);
+
+  // Flank fins
+  for (const s of [-1, 1]){
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(1.1, 3.0, 5), finMat);
+    fin.rotation.z = s * 1.2; fin.rotation.x = 1.3;
+    fin.position.set(s * 2.2, -0.8, 1.0); g.add(fin);
+  }
+
+  const lb = createEnemyLifeBar(8.0, 0.8); lb.barGroup.position.set(0, 15, 0); g.add(lb.barGroup);
+  const ship = { group:g, neck, head, humps, lb, mats:[skinMat, bellyMat, finMat, hornMat, toothMat, eyeMat, ...lb.mats], flash:0, kind:'seaking', hitRadius:7.5 };
+  ship.barTopLocal = 11;
+  return ship;
+}
+
+/* ------------------------------------------------------- JÖRMUNGANDR (Norse) */
+function makeJormungandr(){
+  const g = new THREE.Group();
+  const scaleMat = new THREE.MeshLambertMaterial({ color: 0x1f6b3a, emissive: 0x0b2a15 });
+  const plateMat = new THREE.MeshLambertMaterial({ color: 0x2f9c4e });
+  const bellyMat = new THREE.MeshLambertMaterial({ color: 0xc7d98a });
+  const hornMat  = new THREE.MeshLambertMaterial({ color: 0xe8dcc0 });
+  const runeMat  = new THREE.MeshBasicMaterial({ color: 0x7dffb0 });
+  const eyeMat   = new THREE.MeshBasicMaterial({ color: 0xbfff5a });
+  const toothMat = new THREE.MeshLambertMaterial({ color: 0xfff6e6 });
+
+  const head = new THREE.Mesh(new THREE.ConeGeometry(1.6, 4.6, 8), scaleMat);
+  head.rotation.x = Math.PI / 2; head.position.z = 5.2; g.add(head);
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 2.2), scaleMat);
+  snout.position.set(0, 0.2, 6.4); g.add(snout);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 2.4), scaleMat);
+  jaw.position.set(0, -1.0, 6.2); jaw.rotation.x = 0.2; g.add(jaw);
+  for (let i = -2; i <= 2; i++){
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.9, 5), toothMat);
+    t.position.set(i * 0.34, -0.36, 7.2); t.rotation.x = 0.6; g.add(t);
+    const t2 = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.9, 5), toothMat);
+    t2.position.set(i * 0.32, -1.42, 7.1); t2.rotation.x = 2.5; g.add(t2);
+  }
+  for (const s of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), eyeMat);
+    eye.position.set(s * 1.05, 0.7, 4.9); g.add(eye);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.3, 2.1, 6), hornMat);
+    horn.rotation.x = -0.5; horn.rotation.z = s * 0.5;
+    horn.position.set(s * 0.8, 1.7, 3.3); g.add(horn);
+  }
+  const headBelly = new THREE.Mesh(new THREE.SphereGeometry(1.15, 10, 6), bellyMat);
+  headBelly.scale.set(1.2, 0.55, 1.7); headBelly.position.set(0, -0.8, 5.4); g.add(headBelly);
+
+  const segments = [];
+  const N = 14;
+  for (let i = 0; i < N; i++){
+    const r = Math.max(0.35, 1.7 - i * 0.09);
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 12, 10), i % 2 ? scaleMat : plateMat);
+    seg.position.z = 2.8 - i * 1.7; g.add(seg);
+    const spine = new THREE.Mesh(new THREE.ConeGeometry(0.32 - i * 0.015, 1.2 - i * 0.05, 4), plateMat);
+    spine.position.y = r * 0.95; seg.add(spine);
+    const rune = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), runeMat);
+    rune.position.set(r * 0.7, 0, 0); seg.add(rune);
+    segments.push(seg);
+  }
+  const tailZ = 2.8 - (N - 1) * 1.7;
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.6, 3.2, 6), plateMat);
+  tail.rotation.x = Math.PI / 2; tail.position.set(0, 0.1, tailZ - 1.8); g.add(tail);
+
+  const lb = createEnemyLifeBar(7.0, 0.7); lb.barGroup.position.set(0, 5.4, 1.5); g.add(lb.barGroup);
+  const ship = { group:g, segments, lb, mats:[scaleMat, plateMat, bellyMat, hornMat, runeMat, eyeMat, toothMat, ...lb.mats], flash:0, kind:'jormungandr', hitRadius:7.0 };
+  ship.barTopLocal = 5.6;
+  return ship;
+}
+
+/* ------------------------------------------------------- STORM ROC (Norse) */
+function makeRoc(){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x6b7076 });
+  const wingMat = new THREE.MeshLambertMaterial({ color: 0x9aa4ad, side: THREE.DoubleSide });
+  const headMat = new THREE.MeshLambertMaterial({ color: 0xf2f4f6 });
+  const beakMat = new THREE.MeshLambertMaterial({ color: 0xf0b93a });
+  const clawMat = new THREE.MeshLambertMaterial({ color: 0x3a3f45 });
+  const eyeMat  = new THREE.MeshBasicMaterial({ color: 0xff3b2f });
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), bodyMat);
+  body.scale.set(0.9, 1.0, 1.8); g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8), headMat);
+  head.position.set(0, 0.7, 1.7); g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.3, 1.0, 6), beakMat);
+  beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.6, 2.5); g.add(beak);
+  for (const s of [-1, 1]){
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 6), eyeMat);
+    eye.position.set(s * 0.32, 0.8, 2.05); g.add(eye);
+  }
+
+  const wings = [];
+  for (const s of [-1, 1]){
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.5, 0.4, 0.0);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.14, 2.2), wingMat);
+    wing.position.set(s * 3.0, 0, 0);
+    wing.rotation.y = s * 0.12;
+    for (let i = 0; i < 4; i++){
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.5), bodyMat);
+      f.position.set(s * (4.6 - i * 1.0), -0.05, 0.7 + i * 0.12);
+      wing.add(f);
+    }
+    pivot.add(wing); g.add(pivot);
+    wings.push({ pivot, side: s });
+  }
+  for (let i = 0; i < 5; i++){
+    const tf = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 1.6), wingMat);
+    tf.position.set((i - 2) * 0.28, 0.0, -2.2); tf.rotation.y = (i - 2) * 0.2; g.add(tf);
+  }
+  for (const s of [-1, 1]){
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.9, 6), clawMat);
+    leg.position.set(s * 0.45, -0.9, 0.4); g.add(leg);
+    const claw = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 5), beakMat);
+    claw.position.set(s * 0.45, -1.4, 0.5); g.add(claw);
+  }
+  const lb = createEnemyLifeBar(4.6, 0.55); lb.barGroup.position.set(0, 2.2, 0); g.add(lb.barGroup);
+  const ship = { group:g, wings, lb, mats:[bodyMat, wingMat, headMat, beakMat, clawMat, eyeMat, ...lb.mats], flash:0, kind:'roc', hitRadius:4.6 };
+  ship.barTopLocal = 2.4;
+  return ship;
+}
+
 /* =========================================================
    ENEMY TYPES  (tier-relative to the PLAYER)
    pirate   → same size & power as the player
@@ -1978,16 +2276,28 @@ const ENEMY_TYPES = [
   { id:'flying',    name:'Sky Drake With Something To Prove',maker:makeFlyingDrake,  hp:10, speed:32, dmg:3, cd:1.6, scaleRange:[5,10],  xp:18,  icon:'🦅', isFly:true,  aggressive:false, spawnWeight:16, climate:null },
   { id:'angler',    name:'Abyssal Gulper (Very Hungry)',      maker:makeAngler,       hp:16, speed:19, dmg:4, cd:2.0, scaleRange:[5,10],  xp:22,  icon:'🐟', isFly:false, aggressive:false, spawnWeight:14, climate:null },
   { id:'kraken',    name:'Dread Kraken, Lord of Eight Regrets',maker:makeKraken,      hp:22, speed:16, dmg:5, cd:1.5, scaleRange:[10,30], xp:40,  icon:'🐙', isFly:false, aggressive:true,  spawnWeight:9,  climate:'whirl' },
+  { id:'viking',    name:'Draugr Viking Longship',            maker:makeVikingLongship,hp:20, speed:23, dmg:5, cd:1.7, scaleRange:[3,7],   xp:32,  icon:'🛶', isFly:false, aggressive:true,  spawnWeight:12, climate:null },
+  { id:'roc',       name:'Hraesvelgr Storm Roc',              maker:makeRoc,          hp:14, speed:36, dmg:4, cd:1.5, scaleRange:[5,11],  xp:26,  icon:'🪶', isFly:true,  aggressive:false, spawnWeight:14, climate:null },
   { id:'leviathan', name:'Giant Sea Serpent (Emotional Support)',maker:makeLeviathan, hp:26, speed:18, dmg:6, cd:1.3, scaleRange:[15,40], xp:70,  icon:'🐉', isFly:false, aggressive:true,  spawnWeight:5,  climate:'fog' },
+  { id:'jormungandr',name:'Jörmungandr, The World Serpent',   maker:makeJormungandr,  hp:56, speed:16, dmg:9, cd:1.3, scaleRange:[14,30], xp:240, icon:'🐲', isFly:false, aggressive:true,  spawnWeight:2,  climate:'fog' },
+  { id:'seaking',   name:'SEA KING (Unfathomably Ancient)',   maker:makeSeaKing,      hp:64, speed:17, dmg:11,cd:1.4, scaleRange:[16,34], xp:300, icon:'🐍', isFly:false, aggressive:true,  spawnWeight:2,  climate:'storm' },
   { id:'titan',     name:'Titan Dreadnought, Esq.',           maker:makeDreadnought,  hp:30, speed:15, dmg:8, cd:1.8, scaleRange:[20,50], xp:140, icon:'🏴‍☠️', isFly:false, aggressive:true,  spawnWeight:2,  climate:'storm' },
 ];
 
 const TOTAL_SPAWN_WEIGHT = ENEMY_TYPES.reduce((a,t) => a + t.spawnWeight, 0);
 function pickEnemyType(){
-  let r = Math.random() * TOTAL_SPAWN_WEIGHT;
-  for (const t of ENEMY_TYPES){
-    r -= t.spawnWeight;
-    if (r <= 0) return t;
+  // Zone climate bias: the Calm Belts teem with Sea Kings; the Grand Line with titans & raiders.
+  const weights = ENEMY_TYPES.map(t => {
+    let w = t.spawnWeight;
+    if (player.inCalmBelt && (t.id === 'seaking' || t.id === 'leviathan' || t.id === 'jormungandr')) w *= 8;
+    if (player.inGrandLine && (t.id === 'titan' || t.id === 'viking')) w *= 3;
+    return w;
+  });
+  let total = 0; for (const w of weights) total += w;
+  let r = Math.random() * total;
+  for (let i = 0; i < ENEMY_TYPES.length; i++){
+    r -= weights[i];
+    if (r <= 0) return ENEMY_TYPES[i];
   }
   return ENEMY_TYPES[0];
 }
@@ -2217,6 +2527,79 @@ function makeWhirlHazard(){
   return { group:g, radius:14*s, mats:[m], rings, kind:'whirl', height:0 };
 }
 
+/* =========================================================
+   THE RED LINE — a single colossal north–south mountain range
+   that splits the world into East and West seas (a One Piece
+   homage). It runs along x ≡ 0 and wraps with the world; the
+   only crossing is the Reverse Mountain pass at z ≡ 0.
+   The whole group is snapped to the nearest world tile each
+   frame so it always surrounds the player seamlessly.
+   ========================================================= */
+const redLine = new THREE.Group();
+{
+  const baseMat = new THREE.MeshLambertMaterial({ color: 0x6f2014 });
+  const peakMats = [
+    new THREE.MeshLambertMaterial({ color: 0x9c3a22 }),
+    new THREE.MeshLambertMaterial({ color: 0x7c2a18 }),
+    new THREE.MeshLambertMaterial({ color: 0xb14a2a }),
+    new THREE.MeshLambertMaterial({ color: 0x5f1f10 }),
+  ];
+  const capMat  = new THREE.MeshLambertMaterial({ color: 0xc9b39a });
+  const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff6a2a });
+
+  const HALF = WORLD_H / 2;
+
+  // Continuous cliff base along the wall, broken only by the pass at z=0.
+  const baseSeg = (z0, z1) => {
+    if (z1 - z0 < 2) return;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(WALL_THICK + 36, 62, z1 - z0), baseMat);
+    base.position.set(0, 27, (z0 + z1) / 2);
+    redLine.add(base);
+  };
+  baseSeg(REVERSE_GAP, HALF);
+  baseSeg(-HALF, -REVERSE_GAP);
+
+  // Jagged peaks marching along the ridge (z), skipping the pass.
+  for (let z = -HALF + 12; z < HALF - 12; z += 30 + Math.random() * 22){
+    if (Math.abs(z) < REVERSE_GAP + 26) continue;
+    const h = 80 + Math.random() * 190;
+    const rad = 24 + Math.random() * 42;
+    const peak = new THREE.Mesh(
+      new THREE.ConeGeometry(rad, h, 4 + (Math.random() * 3 | 0)),
+      peakMats[(Math.random() * peakMats.length) | 0]);
+    peak.position.set((Math.random() - 0.5) * 18, h * 0.5 + 4, z);
+    peak.rotation.y = Math.random() * Math.PI;
+    peak.scale.z = 1.5; // stretch into a ridge running along the wall
+    redLine.add(peak);
+
+    if (Math.random() < 0.30){
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.5, h * 0.3, 5), capMat);
+      cap.position.set(peak.position.x, h * 0.84, z);
+      cap.rotation.y = peak.rotation.y;
+      cap.scale.z = 1.5;
+      redLine.add(cap);
+    }
+    if (Math.random() < 0.08){
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(2.2 + Math.random() * 3, 6, 6), lavaMat);
+      glow.position.set(peak.position.x, 6 + Math.random() * 20, z);
+      redLine.add(glow);
+    }
+  }
+
+  // Landmark: twin leaning peaks framing the Reverse Mountain pass at z=0.
+  for (const s of [-1, 1]){
+    const twin = new THREE.Mesh(new THREE.ConeGeometry(58, 330, 6), peakMats[s < 0 ? 0 : 2]);
+    twin.position.set(0, 165, s * (REVERSE_GAP + 42));
+    twin.rotation.x = -s * 0.12;
+    redLine.add(twin);
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(28, 100, 6), capMat);
+    snow.position.set(0, 332, s * (REVERSE_GAP + 42));
+    snow.rotation.x = -s * 0.12;
+    redLine.add(snow);
+  }
+}
+scene.add(redLine);
+
 /* ------------------------------------------------ DEEP SEA TREASURE */
 const chestGeo = new THREE.BoxGeometry(1.6, 1.2, 1.2);
 function makeTreasureLightBeacon(){
@@ -2436,8 +2819,14 @@ const player = {
   defense: 10, hp: 10, maxHp: 10,
   speed: 10, attack: 10,
   boostDuration: 10,
-  boostActive: false, boostTimer: 0, boostCd: 0,
+  boostMax: 10,
+  boostEnergy: 10,
+  boostActive: false,
+  boostUsing: false,
+  boostRegen: 2.5,
+  boostEmptyT: 0,
   anchored: false,
+  nearWall: false, inGrandLine: false, inCalmBelt: false,
 };
 
 let enemies = [], shake = 0, gameOver = false, time = 0, spawnTimer = 3, elapsed = 0;
@@ -2492,13 +2881,11 @@ function setDifficulty(key){
   saveGame();
 }
 function setTouchControls(on){
-  touchControlsEnabled = !!on;
-  document.body.classList.toggle('mobile', touchControlsEnabled);
-  if (!touchControlsEnabled){
-    mobileInput.throttle = 0; mobileInput.steer = 0;
-    mobileInput.jump = false; mobileInput.fire = false;
-    resetJoyKnob();
-  }
+  touchControlsEnabled = false;
+  document.body.classList.remove('mobile');
+  mobileInput.throttle = 0; mobileInput.steer = 0;
+  mobileInput.jump = false; mobileInput.fire = false;
+  resetJoyKnob();
   updateOrientationClass();
   refreshConfigUI();
 }
@@ -2515,7 +2902,11 @@ function applyDifficultyChange(){
     e.hp = e.maxHp * frac;
     refreshEnemyBar(e);
   }
-  while (enemies.length < Math.min(D.initialEnemies, D.maxEnemies)) spawnEnemyClose();
+  if (elapsed < 20.0){
+    spawnTimer = Math.max(spawnTimer, 10.0);
+  } else if (elapsed > 30.0){
+    while (enemies.length < Math.min(D.initialEnemies, D.maxEnemies)) spawnEnemyClose();
+  }
 }
 
 function refreshConfigUI(){
@@ -2587,7 +2978,7 @@ $('cfgResume').onclick = () => togglePause(false);
 $('cfgExit').onclick = saveAndExit;
 $('cfgSound').onclick = () => setSound(!soundEnabled);
 $('cfgSfx').onclick = () => setSfx(!sfxEnabled);
-$('cfgTouch').onclick = () => setTouchControls(!touchControlsEnabled);
+
 document.querySelectorAll('#diffOpts .cfg-btn').forEach(b => {
   b.onclick = () => setDifficulty(b.dataset.diff);
 });
@@ -2667,7 +3058,7 @@ function bindPad(id, onDown, onUp){
 }
 bindPad('dJump',    () => { mobileInput.jump = true; }, () => { mobileInput.jump = false; });
 bindPad('dAttack',  () => { mobileInput.fire = true; }, () => { mobileInput.fire = false; });
-bindPad('dBoost',   () => { triggerBoost(); });
+bindPad('dBoost',   startBoost, stopBoost);
 bindPad('dImprove', () => { toggleUpgrades(); });
 
 function toggleUpgrades(force){
@@ -2717,6 +3108,9 @@ function calcStats(){
   player.speed = CFG.statBase + player.tiers.engine;
   player.attack = CFG.statBase + player.tiers.cannon;
   player.boostDuration = CFG.statBase + player.tiers.propulsor;
+  player.boostMax = player.boostDuration;
+  if (player.boostEnergy > player.boostMax) player.boostEnergy = player.boostMax;
+  if (player.boostEnergy < 0) player.boostEnergy = 0;
 }
 
 function upgradeCost(type){
@@ -2833,7 +3227,8 @@ function prepareShipForScale(ship, scale){
   ship.group.scale.setScalar(scale);
   if (ship.lb){
     // Keep the bar at a fixed world-height and constant on-screen size
-    const worldBarY = Math.min(6.5 * scale, 60);
+    const topLocal = ship.barTopLocal || 6.5;
+    const worldBarY = Math.min(topLocal * scale, 220);
     ship.lb.barGroup.position.y = worldBarY / scale;
     ship.lb.barGroup.scale.setScalar(1 / scale);
   }
@@ -2904,7 +3299,9 @@ function resetGame(){
   player.hp = player.maxHp;
   player.alive = true;
   player.vy = 0; player.airY = 0; player.jumpT = 0; player.hurtT = 0; player.cd = 0;
-  player.boostActive = false; player.boostTimer = 0; player.boostCd = 0;
+  player.boostActive = false; player.boostUsing = false;
+  player.boostEnergy = player.boostMax;
+  player.boostEmptyT = 0;
   player.anchored = false;
   chartedRoute = [];
   salvageState.active = false;
@@ -2920,12 +3317,11 @@ function resetGame(){
   for (let i = 0; i < 4; i++) spawnTreasureHazard(true);
   for (let i = 0; i < 3; i++) spawnSafeHaven(true);
 
-  const D = diff();
-  for (let i = 0; i < D.initialEnemies; i++) spawnEnemyClose();
-
   weather.stage = 0; weather.level = 0; weather.next = STORMS[0].dur;
   celestial.day = 1;
-  shake = 0; gameOver = false; elapsed = 0; spawnTimer = 3;
+  shake = 0; gameOver = false; elapsed = 0;
+  spawnTimer = 15.0;
+  spawnTimer = 6.0;
   $('over').style.display = 'none';
   $('autopilotBadge').style.display = 'none';
   updateUI();
@@ -3167,16 +3563,23 @@ function updateSalvageCrane(dt){
 $('salvagePrompt').onclick = triggerSalvage;
 
 /* ------------------------------------------------------------- PROPULSOR */
-function triggerBoost(){
-  if (player.boostActive || player.boostCd > 0 || !player.alive || gameOver || paused) return;
-  initAudio();
-  playSound('boost');
-  player.boostActive = true;
-  player.boostTimer = player.boostDuration;
-  player.boostCd = player.boostDuration + 2.5;
-  shake = Math.min(shake + 6, 14);
+function startBoost(){
+  if (!player.alive || gameOver || paused) return;
+  if (player.boostEnergy <= 0.01) return;
+  if (!player.boostUsing){
+    player.boostUsing = true;
+    initAudio();
+    playSound('boost');
+    shake = Math.min(shake + 4, 12);
+  }
 }
-$('boostHudBtn').onclick = triggerBoost;
+function stopBoost(){
+  player.boostUsing = false;
+}
+$('boostHudBtn').addEventListener('pointerdown', startBoost);
+$('boostHudBtn').addEventListener('pointerup', stopBoost);
+$('boostHudBtn').addEventListener('pointerleave', stopBoost);
+$('boostHudBtn').addEventListener('pointercancel', stopBoost);
 
 /* ------------------------------------------------------------- UI & UPGRADES */
 function buyUpgrade(type){
@@ -3220,11 +3623,17 @@ const el = id => {
 function updateUI(){
   el('hpFill').style.width = Math.max(0, player.hp/player.maxHp*100) + '%';
   el('hpTxt').textContent = `${Math.ceil(player.hp)} / ${player.maxHp}`;
-  const boostPct = player.boostActive ? (player.boostTimer / player.boostDuration * 100)
-                 : (player.boostCd > 0 ? (1 - player.boostCd / (player.boostDuration+2.5))*100 : 100);
+  const boostPct = Math.max(0, Math.min(100, player.boostEnergy / Math.max(0.01, player.boostMax) * 100));
   el('boostFill').style.width = boostPct + '%';
-  el('boostTxt').textContent = player.boostActive ? `BOOSTING (${player.boostTimer.toFixed(1)}s)`
-                                                 : (player.boostCd > 0 ? `Recharging...` : `Ready (${player.boostDuration.toFixed(1)}s)`);
+  if (player.boostActive){
+    el('boostTxt').textContent = `BOOSTING (${player.boostEnergy.toFixed(1)}s)`;
+  } else if (player.boostEnergy >= player.boostMax - 0.01){
+    el('boostTxt').textContent = `Ready (${player.boostMax.toFixed(1)}s)`;
+  } else if (player.boostEmptyT > 0){
+    el('boostTxt').textContent = 'Recharging...';
+  } else {
+    el('boostTxt').textContent = `Recharging (${player.boostEnergy.toFixed(1)}s)`;
+  }
 
   el('bankDisplay').textContent = `${player.bank} XP`;
   el('xpTxt').textContent = `${player.bank} XP`;
@@ -3239,6 +3648,26 @@ function updateUI(){
 
   el('autopilotBadge').style.display =
     (chartedRoute && chartedRoute.length > 0) ? 'inline-flex' : 'none';
+  const rw = el('redlineWarn');
+  if (rw) rw.style.display = player.nearWall ? 'block' : 'none';
+  const zb = el('zoneBadge');
+  if (zb){
+    if (player.inGrandLine){
+      zb.style.display = 'inline-flex';
+      zb.textContent = '🌊 THE GRAND LINE — STORM CORRIDOR';
+      zb.style.background = 'rgba(40,90,140,0.45)';
+      zb.style.border = '1px solid #6fb6e6';
+      zb.style.color = '#d2efff';
+    } else if (player.inCalmBelt){
+      zb.style.display = 'inline-flex';
+      zb.textContent = '🕸️ CALM BELT — WINDLESS SEAS (SEA KINGS)';
+      zb.style.background = 'rgba(150,124,60,0.4)';
+      zb.style.border = '1px solid #e6d28a';
+      zb.style.color = '#fff2c9';
+    } else {
+      zb.style.display = 'none';
+    }
+  }
   const safeEl = el('safeBadge');
   if (playerSafe){
     safeEl.style.display = 'inline-flex';
@@ -3334,12 +3763,22 @@ const chartCanvas  = $('chartCanvas');
 const chartCtx     = chartCanvas.getContext('2d');
 let isDrawingRoute = false;
 
+let chartWasPausedByMap = false;
 function toggleChart(){
   const show = chartOverlay.style.display !== 'flex';
   chartOverlay.style.display = show ? 'flex' : 'none';
   if (show){
     if (document.exitPointerLock) document.exitPointerLock();
     renderFullChart();
+    if (!paused){
+      setPaused(true);
+      chartWasPausedByMap = true;
+    }
+  } else {
+    if (chartWasPausedByMap){
+      setPaused(false);
+      chartWasPausedByMap = false;
+    }
   }
 }
 $('mapToggleBtn').onclick = toggleChart;
@@ -3349,7 +3788,7 @@ $('clearRouteBtn').onclick = () => {
   chartedRoute = []; renderFullChart(); updateUI();
 };
 
-const CHART_WORLD_SPAN = 700;
+const CHART_WORLD_SPAN = 820;
 const chartScale = () => (chartCanvas.width * 0.44) / CHART_WORLD_SPAN;
 
 function worldToChart(x, z){
@@ -3361,10 +3800,11 @@ function worldToChart(x, z){
 }
 function chartToWorld(cx, cy){
   const s = chartScale();
-  return {
+  const p = {
     x: player.pos.x + (cx - chartCanvas.width / 2) / s,
     z: player.pos.z + (cy - chartCanvas.height / 2) / s,
   };
+  return p;
 }
 /* Map a DOM pointer event to sea-world coordinates on the chart. */
 function chartPointer(e){
@@ -3412,6 +3852,55 @@ function renderFullChart(){
   ctx.fillStyle = '#4a3219'; ctx.font = 'bold 12px serif'; ctx.textAlign = 'center';
   ctx.fillText('N', 0, -48); ctx.fillText('S', 0, 56);
   ctx.fillText('E', 52, 4);  ctx.fillText('W', -52, 4);
+  ctx.restore();
+
+  // Grand Line corridor + Calm Belts — east–west climate bands
+  ctx.save();
+  {
+    const zc = nearestMultiple(player.pos.z, WORLD_H);
+    const yFor = z => worldToChart(player.pos.x, z).y;
+    ctx.fillStyle = 'rgba(58,110,150,0.30)';
+    ctx.fillRect(0, yFor(zc - GRANDLINE_HALF), w, GRANDLINE_HALF * 2 * chartScale());
+    const beltH = (CALMBELT_OUTER - GRANDLINE_HALF) * chartScale();
+    ctx.fillStyle = 'rgba(214,196,120,0.22)';
+    ctx.fillRect(0, yFor(zc - CALMBELT_OUTER), w, beltH);
+    ctx.fillRect(0, yFor(zc + GRANDLINE_HALF), w, beltH);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(24,64,100,0.9)';
+    ctx.font = 'bold 12px serif';
+    ctx.fillText('THE GRAND LINE', w / 2, yFor(zc) + 4);
+    ctx.fillStyle = 'rgba(150,124,60,0.85)';
+    ctx.fillText('CALM BELT', w / 2, yFor(zc - (GRANDLINE_HALF + CALMBELT_OUTER) / 2) + 4);
+  }
+
+  // The Red Line — the world's north–south divider (wraps with the world)
+  {
+    const cx0 = nearestMultiple(player.pos.x, WORLD_W);
+    const zc  = nearestMultiple(player.pos.z, WORLD_H);
+    const yA = worldToChart(player.pos.x, zc - REVERSE_GAP).y;
+    const yB = worldToChart(player.pos.x, zc + REVERSE_GAP).y;
+    const gapTop = Math.min(yA, yB), gapBot = Math.max(yA, yB);
+    const halfPx = WALL_THICK * 0.5 * chartScale();
+    for (let k = -1; k <= 1; k++){
+      const cwx = worldToChart(cx0 + k * WORLD_W, player.pos.z).x;
+      if (cwx < -40 || cwx > w + 40) continue;
+      ctx.fillStyle = 'rgba(150,42,26,0.5)';
+      ctx.fillRect(cwx - halfPx, 0, halfPx * 2, h);
+      ctx.strokeStyle = 'rgba(206,86,56,0.95)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cwx, 0);      ctx.lineTo(cwx, gapTop);
+      ctx.moveTo(cwx, gapBot); ctx.lineTo(cwx, h);
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#7a2416';
+      ctx.font = 'bold 13px serif';
+      ctx.fillText('THE RED LINE', cwx, 16);
+      ctx.fillStyle = '#b83423';
+      ctx.font = 'bold 10px serif';
+      ctx.fillText('REVERSE MTN ▲', cwx, (gapTop + gapBot) / 2 + 4);
+    }
+  }
   ctx.restore();
 
   hazards.forEach(haz => {
@@ -3512,6 +4001,27 @@ function renderMiniMap(){
   ctx.beginPath(); ctx.arc(cx, cy, w*0.22, 0, Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(cx, cy, w*0.44, 0, Math.PI*2); ctx.stroke();
 
+  // Grand Line + Calm Belt climate bands, and the Red Line divider (wraps)
+  {
+    const zc = nearestMultiple(player.pos.z, WORLD_H);
+    const yFor = z => cy + (z - player.pos.z) * scale;
+    ctx.fillStyle = 'rgba(58,110,150,0.35)';
+    ctx.fillRect(0, yFor(zc - GRANDLINE_HALF), w, GRANDLINE_HALF * 2 * scale);
+    const beltH = (CALMBELT_OUTER - GRANDLINE_HALF) * scale;
+    ctx.fillStyle = 'rgba(214,196,120,0.25)';
+    ctx.fillRect(0, yFor(zc - CALMBELT_OUTER), w, beltH);
+    ctx.fillRect(0, yFor(zc + GRANDLINE_HALF), w, beltH);
+
+    const cx0 = nearestMultiple(player.pos.x, WORLD_W);
+    ctx.strokeStyle = 'rgba(198,74,48,0.9)';
+    ctx.lineWidth = 3;
+    for (let k = -1; k <= 1; k++){
+      const x = cx + (cx0 + k * WORLD_W - player.pos.x) * scale;
+      if (x < -8 || x > w + 8) continue;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+  }
+
   hazards.forEach(haz => {
     const dx = (haz.pos.x - player.pos.x) * scale;
     const dy = (haz.pos.z - player.pos.z) * scale;
@@ -3610,10 +4120,20 @@ function update(dt){
   updateDayNightAndWeather(dt);
   updateCelestialLock();
 
-  if (player.boostActive){
-    player.boostTimer -= dt;
-    if (player.boostTimer <= 0) player.boostActive = false;
+  if (player.boostUsing && player.boostEnergy > 0){
+    player.boostEnergy -= dt;
+    if (player.boostEnergy <= 0){
+      player.boostEnergy = 0;
+      player.boostUsing = false;
+      player.boostEmptyT = 1.2;
+    }
+  } else if (player.boostEnergy < player.boostMax){
+    const regen = player.boostEmptyT > 0 ? player.boostRegen * 0.4 : player.boostRegen;
+    if (player.boostEmptyT > 0) player.boostEmptyT -= dt;
+    player.boostEnergy += regen * dt;
+    if (player.boostEnergy > player.boostMax) player.boostEnergy = player.boostMax;
   }
+  player.boostActive = player.boostUsing && player.boostEnergy > 0.01;
   if (player.boostCd > 0) player.boostCd -= dt;
 
   /* Autopilot (also drives the bank/lean via player.steer) */
@@ -3663,12 +4183,14 @@ function update(dt){
       const maxV = CFG.baseMaxSpeed * speedMult * boostBoost;
       player.vel = THREE.MathUtils.clamp(player.vel, -maxV*0.4, maxV);
       player.vel += weather.wind * 2.5 * dt;
+      if (player.inCalmBelt) player.vel -= player.vel * 1.4 * dt; // windless doldrums
 
       player.pos.x += Math.sin(player.heading) * player.vel * dt;
       player.pos.z += Math.cos(player.heading) * player.vel * dt;
 
       player.jumpT -= dt;
-      if ((isDown('Space') || mobileInput.jump) && player.jumpT <= 0 && player.airY <= 0.01){
+      if (isDown('ShiftLeft') || isDown('ShiftRight')) startBoost(); else stopBoost();
+    if ((isDown('Space') || mobileInput.jump) && player.jumpT <= 0 && player.airY <= 0.01){
         player.vy = CFG.jumpV;
         player.jumpT = CFG.jumpCd;
         playSound('jump');
@@ -3705,6 +4227,7 @@ function update(dt){
 
   seaUniforms.uTime.value = time;
   seaMesh.position.set(player.pos.x, 0, player.pos.z);
+  redLine.position.set(nearestMultiple(player.pos.x, WORLD_W), 0, nearestMultiple(player.pos.z, WORLD_H));
 
   /* Boat transform */
   const boat = player.boat;
@@ -3794,6 +4317,31 @@ function update(dt){
   }
   while (hazards.length < 14) spawnRandomHazard(false);
 
+  /* The Red Line — colossus wall splitting East and West seas.
+     Blocked everywhere except the Reverse Mountain pass (z ≡ 0). */
+  const wallOffX = wrapOffset(player.pos.x, WORLD_W);
+  const wallOffZ = wrapOffset(player.pos.z, WORLD_H);
+  {
+    const inGap = Math.abs(wallOffZ) < REVERSE_GAP;
+    const halfThick = WALL_THICK * 0.5 + 6;
+    if (!inGap && Math.abs(wallOffX) < halfThick){
+      const side = wallOffX >= 0 ? 1 : -1;
+      player.pos.x += side * (halfThick - Math.abs(wallOffX));
+      if (player.vel > 0) player.vel *= 0.15;
+      if (player.hurtT <= 0 && !player.anchored && player.alive && !gameOver){
+        player.hurtT = 0.9;
+        playSound('hit');
+        shake = Math.min(shake + 12, 22);
+        spawnFlash(player.pos.clone().setY(3), 3.2, 0xb5472f);
+      }
+    }
+    player.nearWall = !inGap && Math.abs(wallOffX) < WALL_THICK + 150;
+  }
+
+  /* Grand Line & Calm Belt — east–west bands centered on z ≡ 0. */
+  player.inGrandLine = Math.abs(wallOffZ) < GRANDLINE_HALF;
+  player.inCalmBelt  = Math.abs(wallOffZ) >= GRANDLINE_HALF && Math.abs(wallOffZ) < CALMBELT_OUTER;
+
   /* Treasure beacons */
   for (let i = treasures.length - 1; i >= 0; i--){
     const tr = treasures[i];
@@ -3831,8 +4379,10 @@ function update(dt){
     spawnTimer -= dt;
     const D = diff();
     if (spawnTimer <= 0 && enemies.length < D.maxEnemies){
-      spawnEnemyFar();
+      if (elapsed < 20.0) spawnEnemy(160, 120, 1.8);
+      else spawnEnemyFar();
       spawnTimer = D.spawnMin + Math.random()*(D.spawnMax - D.spawnMin) - Math.min(2, elapsed/30);
+      if (elapsed < 15.0) spawnTimer = Math.max(spawnTimer, 8.0);
     }
   }
 
@@ -3886,6 +4436,15 @@ function update(dt){
       } else if (e.ship.kind === 'kraken'){
         e.wob += dt * 2;
         e.ship.arms.forEach(a => { a.mesh.rotation.x = 1.15 + Math.sin(e.wob + a.phase)*0.45; });
+      } else if (e.ship.kind === 'seaking'){
+        e.wob += dt * 1.6;
+        const sway = Math.sin(e.wob) * 0.28;
+        e.ship.neck.rotation.z = sway;
+        e.ship.neck.rotation.x = 0.15 + Math.sin(e.wob * 0.8) * 0.12;
+        e.ship.head.rotation.z = -sway * 0.6;
+      } else if (e.ship.kind === 'jormungandr'){
+        e.wob += dt * 2.4;
+        e.ship.segments.forEach((seg, idx) => { seg.position.x = Math.sin(e.wob + idx * 0.5) * 0.9; });
       }
     }
 
@@ -4116,7 +4675,7 @@ renderer.setAnimationLoop(now => {
 
 window.game = {
   player, hazards, treasures, enemies, havens,
-  bloodMoon, celestial,
+  bloodMoon, celestial, redLine, WORLD_W, WORLD_H, REVERSE_GAP, wrapOffset, nearestMultiple,
   calcStats, buyUpgrade, computeAimTarget,
   triggerSalvage, triggerBoost, fireCannons, resetGame, saveGame, loadGame,
   togglePause, setDifficulty, setSound, setSfx, setTouchControls, DIFFICULTIES, ENEMY_TYPES,
