@@ -690,7 +690,7 @@
         <div class="cfg-group">
           <div class="cfg-label">Interface</div>
           <div class="cfg-opts">
-
+            <button class="cfg-btn full" id="cfgTouch">📱 Touch Controls: Off</button>
           </div>
         </div>
 
@@ -704,7 +704,7 @@
 </div>
 
 <!-- ===================== LANDSCAPE ROTATE PROMPT (MOBILE ONLY) ===================== -->
-
+<div id="rotateOverlay">
   <div class="rotate-box">
     <div class="rotate-icon">📱</div>
     <h2>Rotate Your Device</h2>
@@ -2881,11 +2881,13 @@ function setDifficulty(key){
   saveGame();
 }
 function setTouchControls(on){
-  touchControlsEnabled = false;
-  document.body.classList.remove('mobile');
-  mobileInput.throttle = 0; mobileInput.steer = 0;
-  mobileInput.jump = false; mobileInput.fire = false;
-  resetJoyKnob();
+  touchControlsEnabled = !!on;
+  document.body.classList.toggle('mobile', touchControlsEnabled);
+  if (!touchControlsEnabled){
+    mobileInput.throttle = 0; mobileInput.steer = 0;
+    mobileInput.jump = false; mobileInput.fire = false;
+    resetJoyKnob();
+  }
   updateOrientationClass();
   refreshConfigUI();
 }
@@ -2978,7 +2980,7 @@ $('cfgResume').onclick = () => togglePause(false);
 $('cfgExit').onclick = saveAndExit;
 $('cfgSound').onclick = () => setSound(!soundEnabled);
 $('cfgSfx').onclick = () => setSfx(!sfxEnabled);
-
+$('cfgTouch').onclick = () => setTouchControls(!touchControlsEnabled);
 document.querySelectorAll('#diffOpts .cfg-btn').forEach(b => {
   b.onclick = () => setDifficulty(b.dataset.diff);
 });
@@ -3696,7 +3698,6 @@ addEventListener('keydown', e => {
     if (playerInSafeHaven() && !bloodMoon.active) toggleAnchor();
     else triggerSalvage();
   }
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') triggerBoost();
   if (e.code === 'Space'){
     e.preventDefault();
     if (chartedRoute && chartedRoute.length > 0){ chartedRoute = []; updateUI(); }
@@ -4677,7 +4678,7 @@ window.game = {
   player, hazards, treasures, enemies, havens,
   bloodMoon, celestial, redLine, WORLD_W, WORLD_H, REVERSE_GAP, wrapOffset, nearestMultiple,
   calcStats, buyUpgrade, computeAimTarget,
-  triggerSalvage, triggerBoost, fireCannons, resetGame, saveGame, loadGame,
+  triggerSalvage, startBoost, stopBoost, fireCannons, resetGame, saveGame, loadGame,
   togglePause, setDifficulty, setSound, setSfx, setTouchControls, DIFFICULTIES, ENEMY_TYPES,
 };
 </script>
